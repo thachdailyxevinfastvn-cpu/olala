@@ -138,32 +138,37 @@ function getCustomers(params) {
     });
   }
 
-  const result = filtered.map((r, i) => ({
-    key: i,
-    date: IDX.DATE > -1 ? formatDateForClient(r[IDX.DATE]) : '',
-    creatorName: IDX.CREATOR > -1 ? r[IDX.CREATOR] : '', // Người tạo
-    dateReceived: IDX.DATE_RECEIVED > -1 ? formatDateForClient(r[IDX.DATE_RECEIVED]) : '', // Ngày nhận
-    lastUpdated: IDX.UPDATED > -1 ? formatDateForClient(r[IDX.UPDATED]) : '',
-    saleName: IDX.SALE > -1 ? r[IDX.SALE] : '',
-    department: IDX.DEPT > -1 ? r[IDX.DEPT] : '',
-    customerName: IDX.NAME > -1 ? r[IDX.NAME] : '',
-    phone: IDX.PHONE > -1 ? r[IDX.PHONE] : '',
-    ward: IDX.WARD > -1 ? r[IDX.WARD] : '',
-    province: IDX.PROVINCE > -1 ? r[IDX.PROVINCE] : '',
-    carModel: IDX.CAR > -1 ? r[IDX.CAR] : '',
-    version: IDX.VERSION > -1 ? r[IDX.VERSION] : '',
-    carColor: IDX.COLOR > -1 ? r[IDX.COLOR] : '',
-    channel: IDX.CHANNEL > -1 ? r[IDX.CHANNEL] : '',
-    source: IDX.SOURCE > -1 ? r[IDX.SOURCE] : '',
-    status: IDX.STATUS > -1 ? r[IDX.STATUS] : '',
-    leadRating: IDX.RATING > -1 ? r[IDX.RATING] : '-',
-    rating: IDX.RATING > -1 ? r[IDX.RATING] : '-',
-    "LEAD RATING": IDX.RATING > -1 ? r[IDX.RATING] : '-',
-    testDrive: IDX.TESTDRIVE > -1 ? r[IDX.TESTDRIVE] : '',
-    saleNote: IDX.NOTE_SALE > -1 ? r[IDX.NOTE_SALE] : '',
-    tpkdNote: IDX.NOTE_TPKD > -1 ? r[IDX.NOTE_TPKD] : '',
-    mNote: IDX.NOTE_M > -1 ? r[IDX.NOTE_M] : ''
-  }));
+  const result = filtered.map((r, i) => {
+    let td = IDX.TESTDRIVE > -1 ? r[IDX.TESTDRIVE] : '';
+    if (typeof td === 'string' && td.startsWith("'")) td = td.substring(1);
+    
+    return {
+      key: i,
+      date: IDX.DATE > -1 ? formatDateForClient(r[IDX.DATE]) : '',
+      creatorName: IDX.CREATOR > -1 ? r[IDX.CREATOR] : '', // Người tạo
+      dateReceived: IDX.DATE_RECEIVED > -1 ? formatDateForClient(r[IDX.DATE_RECEIVED]) : '', // Ngày nhận
+      lastUpdated: IDX.UPDATED > -1 ? formatDateForClient(r[IDX.UPDATED]) : '',
+      saleName: IDX.SALE > -1 ? r[IDX.SALE] : '',
+      department: IDX.DEPT > -1 ? r[IDX.DEPT] : '',
+      customerName: IDX.NAME > -1 ? r[IDX.NAME] : '',
+      phone: IDX.PHONE > -1 ? r[IDX.PHONE] : '',
+      ward: IDX.WARD > -1 ? r[IDX.WARD] : '',
+      province: IDX.PROVINCE > -1 ? r[IDX.PROVINCE] : '',
+      carModel: IDX.CAR > -1 ? r[IDX.CAR] : '',
+      version: IDX.VERSION > -1 ? r[IDX.VERSION] : '',
+      carColor: IDX.COLOR > -1 ? r[IDX.COLOR] : '',
+      channel: IDX.CHANNEL > -1 ? r[IDX.CHANNEL] : '',
+      source: IDX.SOURCE > -1 ? r[IDX.SOURCE] : '',
+      status: IDX.STATUS > -1 ? r[IDX.STATUS] : '',
+      leadRating: IDX.RATING > -1 ? r[IDX.RATING] : '-',
+      rating: IDX.RATING > -1 ? r[IDX.RATING] : '-',
+      "LEAD RATING": IDX.RATING > -1 ? r[IDX.RATING] : '-',
+      testDrive: td,
+      saleNote: IDX.NOTE_SALE > -1 ? r[IDX.NOTE_SALE] : '',
+      tpkdNote: IDX.NOTE_TPKD > -1 ? r[IDX.NOTE_TPKD] : '',
+      mNote: IDX.NOTE_M > -1 ? r[IDX.NOTE_M] : ''
+    };
+  });
 
   return responseJSON({ status: 'success', data: result });
 }
@@ -206,7 +211,17 @@ function addCustomers(params) {
     if (IDX.RATING > -1) row[IDX.RATING] = rVal;
 
     if (IDX.STATUS > -1) row[IDX.STATUS] = 'Mới';
-    if (IDX.TESTDRIVE > -1) row[IDX.TESTDRIVE] = 'Chưa';
+    
+    let tdVal = c.testDrive || 'Chưa';
+    if (tdVal !== 'Chưa' && typeof tdVal === 'string') {
+        if (tdVal.includes('-') && tdVal.length === 10) {
+            const p = tdVal.split('-');
+            tdVal = `'${p[2]}/${p[1]}/${p[0]}`;
+        } else if (tdVal.includes('T') && tdVal.includes('Z')) {
+            tdVal = "'" + Utilities.formatDate(new Date(tdVal), "GMT+7", "dd/MM/yyyy");
+        }
+    }
+    if (IDX.TESTDRIVE > -1) row[IDX.TESTDRIVE] = tdVal;
     if (IDX.NOTE_SALE > -1) row[IDX.NOTE_SALE] = c.saleNote ? `[${user.name}]: ${c.saleNote}` : '';
 
     return row;
@@ -281,7 +296,17 @@ function updateCustomer(params) {
   setCell(IDX.CHANNEL, d.channel);
   setCell(IDX.SOURCE, d.source);
   setCell(IDX.STATUS, d.status);
-  setCell(IDX.TESTDRIVE, d.testDrive);
+  
+  let tdVal = d.testDrive || 'Chưa';
+  if (tdVal !== 'Chưa' && typeof tdVal === 'string') {
+      if (tdVal.includes('-') && tdVal.length === 10) {
+          const p = tdVal.split('-');
+          tdVal = `'${p[2]}/${p[1]}/${p[0]}`;
+      } else if (tdVal.includes('T') && tdVal.includes('Z')) {
+          tdVal = "'" + Utilities.formatDate(new Date(tdVal), "GMT+7", "dd/MM/yyyy");
+      }
+  }
+  setCell(IDX.TESTDRIVE, tdVal);
 
   const ratingVal = d.leadRating || d['LEAD RATING'];
   if (ratingVal) setCell(IDX.RATING, ratingVal);

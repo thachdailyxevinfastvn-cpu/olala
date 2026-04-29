@@ -1,10 +1,10 @@
 // src/features/reports/reportService.js
 
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzk88b6oX8V5GH92tewnw_BpBDwI-p51oiNTaCpCy0E16OfdYKg6Mpx8BYmvU-yC2SW/exec'; 
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzk88b6oX8V5GH92tewnw_BpBDwI-p51oiNTaCpCy0E16OfdYKg6Mpx8BYmvU-yC2SW/exec';
 
 const CLOUD_NAME = 'dda8qq92p';
 const UPLOAD_PRESET = 'skoda_upload';
-const GEMINI_API_KEY = 'AIzaSyDBpyBx2UoNImCcFu0I95TshJqhW0BsCyo'; 
+const GEMINI_API_KEY = 'AIzaSyAX5OlW_yRdYDoFjj--YIUkOD18UBX1Wm8';
 
 export const reportService = {
   uploadImage: async (file) => {
@@ -15,7 +15,7 @@ export const reportService = {
     try {
       const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: formData });
       const data = await res.json();
-      return data.secure_url; 
+      return data.secure_url;
     } catch (error) { throw error; }
   },
 
@@ -50,7 +50,7 @@ export const reportService = {
   },
 
   analyzeImageWithAI: async (imageFile) => {
-    console.log("🚀 START AI SCAN (Gemini 2.0 Flash)...");
+    console.log("🚀 START AI SCAN (Gemini 1.5 Flash)...");
     try {
       const base64Data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -59,8 +59,8 @@ export const reportService = {
         reader.readAsDataURL(imageFile);
       });
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-      
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
       const prompt = `
         Bạn là kiểm soát viên nhập liệu. Xem ảnh báo cáo TikTok Live.
         Ảnh có thể chứa dữ liệu của NHIỀU NGÀY. Hãy phân tích và gom nhóm.
@@ -78,36 +78,36 @@ export const reportService = {
       const payload = { contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: imageFile.type || 'image/jpeg', data: base64Data } }] }] };
       const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await response.json();
-      
-      if(data.candidates && data.candidates[0].content) {
-          let textResponse = data.candidates[0].content.parts[0].text;
-          
-          textResponse = textResponse.replace(/```json|```/g, '').trim();
-          
-          const firstBracket = textResponse.indexOf('[');
-          const firstCurly = textResponse.indexOf('{');
-          const lastBracket = textResponse.lastIndexOf(']');
-          const lastCurly = textResponse.lastIndexOf('}');
 
-          let cleanJson = textResponse;
-          if (firstBracket !== -1 && lastBracket !== -1) {
-              cleanJson = textResponse.substring(firstBracket, lastBracket + 1);
-          } else if (firstCurly !== -1 && lastCurly !== -1) {
-              cleanJson = textResponse.substring(firstCurly, lastCurly + 1);
-          }
+      if (data.candidates && data.candidates[0].content) {
+        let textResponse = data.candidates[0].content.parts[0].text;
 
-          try {
-              const result = JSON.parse(cleanJson);
-              if (Array.isArray(result)) return result;
-              else if (typeof result === 'object') {
-                  if (!result.date && result.reportDate) result.date = result.reportDate;
-                  return [result];
-              }
-              return null;
-          } catch (parseError) {
-              console.error("❌ JSON Parse Error:", parseError);
-              return null;
+        textResponse = textResponse.replace(/```json|```/g, '').trim();
+
+        const firstBracket = textResponse.indexOf('[');
+        const firstCurly = textResponse.indexOf('{');
+        const lastBracket = textResponse.lastIndexOf(']');
+        const lastCurly = textResponse.lastIndexOf('}');
+
+        let cleanJson = textResponse;
+        if (firstBracket !== -1 && lastBracket !== -1) {
+          cleanJson = textResponse.substring(firstBracket, lastBracket + 1);
+        } else if (firstCurly !== -1 && lastCurly !== -1) {
+          cleanJson = textResponse.substring(firstCurly, lastCurly + 1);
+        }
+
+        try {
+          const result = JSON.parse(cleanJson);
+          if (Array.isArray(result)) return result;
+          else if (typeof result === 'object') {
+            if (!result.date && result.reportDate) result.date = result.reportDate;
+            return [result];
           }
+          return null;
+        } catch (parseError) {
+          console.error("❌ JSON Parse Error:", parseError);
+          return null;
+        }
       }
       return null;
     } catch (error) { console.error("❌ System Error:", error); return null; }

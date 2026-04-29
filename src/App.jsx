@@ -11,6 +11,7 @@ import ResetPasswordScreen from './features/auth/ResetPasswordScreen';
 import CustomerList from './features/customers/CustomerList';
 import AssignCustomerPage from './features/customers/AssignCustomerPage';
 import ReportList from './features/reports/ReportList';
+import CalendarPage from './features/calendar/CalendarPage';
 
 const ProtectedRoute = ({ children }) => {
   const user = authService.getCurrentUser();
@@ -82,6 +83,7 @@ function App() {
 
             <Route path="customers" element={<NonAdminOnly><CustomerList /></NonAdminOnly>} />
             <Route path="assign-customers" element={<NonAdminOnly><AssignCustomerPage /></NonAdminOnly>} />
+            <Route path="calendar" element={<NonAdminOnly><CalendarPage /></NonAdminOnly>} />
             <Route path="reports" element={<ReportList />} />
 
             <Route path="orders" element={<NonAdminOnly><div className="p-10 text-gray-500">Đơn hàng (Đang phát triển)</div></NonAdminOnly>} />

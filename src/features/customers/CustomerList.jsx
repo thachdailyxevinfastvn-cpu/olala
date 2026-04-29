@@ -30,6 +30,7 @@ const CustomerDetailPane = ({ customer, config, onSave, loadingSave, onClose }) 
             const dataToShow = {
                 ...customer,
                 leadRating: customer['LEAD RATING'] || customer.leadRating || customer.rating || '-',
+                testDrive: customer.testDrive || 'Chưa',
                 newNote: ''
             };
             setFormData(dataToShow);
@@ -147,8 +148,8 @@ const CustomerDetailPane = ({ customer, config, onSave, loadingSave, onClose }) 
                 <div className="border rounded-lg p-4 border-gray-200">
                     <h4 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><Car size={14} /> Xe & Đánh giá</h4>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1 col-span-2">
-                            <label className="text-[10px] text-orange-600 font-bold uppercase flex items-center gap-1"><Star size={10} /> Lead Rating (Phân loại)</label>
+                        <div className="space-y-1 col-span-1">
+                            <label className="text-[10px] text-orange-600 font-bold uppercase flex items-center gap-1"><Star size={10} /> Lead Rating</label>
                             <select name="leadRating" value={formData.leadRating || '-'} onChange={handleChange} className="w-full p-2 border border-orange-200 bg-orange-50 rounded text-sm font-bold text-orange-700 outline-none focus:ring-1 focus:ring-orange-500">
                                 <option value="-">-</option>
                                 <option value="Hot">🔥 Hot (Nóng)</option>
@@ -156,6 +157,41 @@ const CustomerDetailPane = ({ customer, config, onSave, loadingSave, onClose }) 
                                 <option value="Cold">❄️ Cold (Lạnh)</option>
                                 <option value="Booking">✅ Booking</option>
                             </select>
+                        </div>
+                        <div className="space-y-1 col-span-1">
+                            <label className="text-[10px] text-emerald-600 font-bold uppercase flex items-center gap-1"><Car size={10} /> Lái thử</label>
+                            <div className="relative">
+                                {formData.testDrive === 'Chưa' || !formData.testDrive ? (
+                                    <select
+                                        value="Chưa"
+                                        onChange={(e) => {
+                                            if (e.target.value !== 'Chưa') {
+                                                const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                                                setFormData(p => ({ ...p, testDrive: new Date(Date.now() - tzoffset).toISOString().slice(0, 10) }));
+                                            }
+                                        }}
+                                        className="w-full p-2 border border-emerald-200 bg-emerald-50 rounded text-sm font-bold text-emerald-700 outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                                    >
+                                        <option value="Chưa">Chưa lái</option>
+                                        <option value="Chọn ngày">Chọn ngày...</option>
+                                    </select>
+                                ) : (
+                                    <div className="flex w-full relative">
+                                        <input 
+                                            type="date"
+                                            name="testDrive"
+                                            value={formData.testDrive}
+                                            onChange={(e) => setFormData(p => ({ ...p, testDrive: e.target.value || 'Chưa' }))}
+                                            className="w-full p-2 pr-8 border border-emerald-200 bg-emerald-50 rounded text-sm font-bold text-emerald-700 outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                                        />
+                                        <button 
+                                            onClick={() => setFormData(p => ({ ...p, testDrive: 'Chưa' }))}
+                                            className="absolute right-2 top-2.5 text-emerald-600 hover:text-emerald-800 bg-emerald-100 rounded-full w-4 h-4 flex items-center justify-center text-[10px]"
+                                            type="button"
+                                        >✕</button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         <div className="space-y-1"><label className="text-[10px] text-gray-500 font-bold uppercase">Dòng xe</label><select name="carModel" value={formData.carModel || ''} onChange={handleChange} className="w-full p-2 border rounded text-sm bg-white outline-none"><option value="">-- Chọn --</option>{config.carModels?.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                         <div className="space-y-1"><label className="text-[10px] text-gray-500 font-bold uppercase">Phiên bản</label><select name="version" value={formData.version || ''} onChange={handleChange} className="w-full p-2 border rounded text-sm bg-white outline-none"><option value="">-- Chọn --</option>{config.versions?.map(c => <option key={c} value={c}>{c}</option>)}</select></div>

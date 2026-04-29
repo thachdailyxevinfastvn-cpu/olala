@@ -39,6 +39,10 @@ function handleRequest(e) {
     if (action === 'acceptCustomer') return acceptCustomer(params);
     if (action === 'deleteAssignedCustomer') return deleteAssignedCustomer(params);
 
+    // --- CALENDAR (File: CalendarController.gs) ---
+    if (action === 'getCalendarData') return getCalendarData();
+    if (action === 'updateCalendarData') return updateCalendarData(params);
+
     return responseJSON({ status: 'error', message: 'Unknown action: ' + action });
   } catch (error) {
     return responseJSON({ status: 'error', message: error.toString() });

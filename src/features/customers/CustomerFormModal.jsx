@@ -61,7 +61,8 @@ const CustomerFormModal = ({ isOpen, onClose, onSuccess, isAssignMode }) => {
         id: Date.now() + Math.random(),
         customerName: '', phone: '', ward: '', province: '',
         carModel: '', version: '', source: 'Hãng', channel: 'Facebook', saleNote: '',
-        leadRating: '-', assigneeEmail: '', assigneeRole: '', assigneeDept: ''
+        leadRating: '-', assigneeEmail: '', assigneeRole: '', assigneeDept: '',
+        testDrive: 'Chưa'
     });
 
     const handleRowChange = (id, field, value) => {
@@ -346,6 +347,38 @@ const CustomerFormModal = ({ isOpen, onClose, onSuccess, isAssignMode }) => {
                                             <option value="Cold">❄️ Cold (Lạnh)</option>
                                             <option value="Booking">✅ Booking</option>
                                         </select>
+                                    </div>
+                                    <div className="relative">
+                                        <Car className="absolute left-3 top-2.5 text-emerald-500 w-4 h-4 z-10" />
+                                        {row.testDrive === 'Chưa' || !row.testDrive ? (
+                                            <select
+                                                value="Chưa"
+                                                onChange={(e) => {
+                                                    if (e.target.value !== 'Chưa') {
+                                                        const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                                                        handleRowChange(row.id, 'testDrive', new Date(Date.now() - tzoffset).toISOString().slice(0, 10));
+                                                    }
+                                                }}
+                                                className="w-full pl-9 pr-3 py-2 border border-emerald-200 bg-emerald-50 rounded text-sm outline-none font-bold text-emerald-700 cursor-pointer"
+                                            >
+                                                <option value="Chưa">Chưa lái</option>
+                                                <option value="Chọn ngày">Chọn ngày...</option>
+                                            </select>
+                                        ) : (
+                                            <div className="flex w-full relative">
+                                                <input 
+                                                    type="date"
+                                                    value={row.testDrive}
+                                                    onChange={(e) => handleRowChange(row.id, 'testDrive', e.target.value || 'Chưa')}
+                                                    className="w-full pl-9 pr-8 py-2 border border-emerald-200 bg-emerald-50 rounded text-sm outline-none font-bold text-emerald-700 cursor-pointer"
+                                                />
+                                                <button 
+                                                    onClick={() => handleRowChange(row.id, 'testDrive', 'Chưa')}
+                                                    className="absolute right-2 top-2.5 text-emerald-600 hover:text-emerald-800 bg-emerald-100 rounded-full w-4 h-4 flex items-center justify-center text-[10px]"
+                                                    type="button"
+                                                >✕</button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-2 relative">

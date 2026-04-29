@@ -9,6 +9,7 @@ const SHEET_CONFIG = "CAC NGUON";
 const SHEET_STAFF = "NHÂN SỰ";
 const SHEET_REPORTS = "BC SOCIAL";
 const SHEET_ASSIGN = "PHÂN KHÁCH";
+const SHEET_CALENDAR = "LỊCH TRỰC";
 
 // =======================================================
 // 2. CÁC HÀM HELPER DÙNG CHUNG

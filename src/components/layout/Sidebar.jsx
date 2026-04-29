@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Settings, X, LogOut, Briefcase, BarChart3, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, X, LogOut, Briefcase, BarChart3, ChevronLeft, ChevronRight, UserPlus, Calendar } from 'lucide-react';
 import { authService } from '../../features/auth/authService';
 
 const Sidebar = ({ isMobileOpen, setIsMobileOpen, isDesktopCollapsed, toggleDesktop }) => {
@@ -47,6 +47,7 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen, isDesktopCollapsed, toggleDesk
     { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/dashboard' },
     { name: 'Khách hàng', icon: <Users size={20} />, path: '/customers' },
     { name: 'Phân khách', icon: <UserPlus size={20} className="text-yellow-300" />, path: '/assign-customers' }, // Changed Icon
+    { name: 'Lịch Trực', icon: <Calendar size={20} />, path: '/calendar' },
     { name: 'Báo cáo', icon: <BarChart3 size={20} />, path: '/reports' },
     { name: 'Đơn hàng', icon: <FileText size={20} />, path: '/orders' },
     { name: 'Cài đặt', icon: <Settings size={20} />, path: '/settings' },

@@ -1,16 +1,34 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kiểm tra Key Gemini</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        .success { color: green; font-weight: bold; }
-        .error { color: red; font-weight: bold; }
-        code { background: #f0f0f0; padding: 2px 5px; border-radius: 4px; }
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+
+        code {
+            background: #f0f0f0;
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
     </style>
 </head>
+
 <body>
     <h2>🔍 Đang kiểm tra Key của bạn...</h2>
     <div id="status">Đang kết nối...</div>
@@ -18,7 +36,7 @@
     <ul id="modelList"></ul>
 
     <script>
-        const API_KEY = 'AIzaSyDBpyBx2UoNImCcFu0I95TshJqhW0BsCyo'; // Key của bạn
+        const API_KEY = 'AIzaSyAX5OlW_yRdYDoFjj--YIUkOD18UBX1Wm8'; // Key của bạn
         const URL = `https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`;
 
         async function checkKey() {
@@ -31,7 +49,7 @@
 
                 if (response.ok) {
                     statusDiv.innerHTML = `<span class="success">✅ Key hoạt động tốt!</span>`;
-                    
+
                     // Lọc ra các model Gemini
                     const models = data.models || [];
                     const geminiModels = models.filter(m => m.name.includes('gemini'));
@@ -42,7 +60,7 @@
                         geminiModels.forEach(model => {
                             const li = document.createElement('li');
                             // Tô đậm các model flash hoặc pro
-                            if(model.name.includes('flash') || model.name.includes('pro')) {
+                            if (model.name.includes('flash') || model.name.includes('pro')) {
                                 li.innerHTML = `<strong>${model.name}</strong> (Nên dùng)`;
                             } else {
                                 li.innerText = model.name;
@@ -61,4 +79,5 @@
         checkKey();
     </script>
 </body>
+
 </html>
