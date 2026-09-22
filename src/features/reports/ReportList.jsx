@@ -692,18 +692,24 @@ const ReportList = () => {
                         <div className="flex border-b border-stone-200 bg-stone-50 shrink-0">
                             <button
                                 type="button"
-                                onClick={() => setModalTab('scan')}
+                                onClick={() => {
+                                    setModalTab('scan');
+                                    setPlatform('TikTok');
+                                }}
                                 className={`flex-1 py-2.5 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
                                     modalTab === 'scan'
                                         ? 'text-emerald-700 border-b-2 border-emerald-600 bg-white shadow-xs'
                                         : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100/60'
                                 }`}
                             >
-                                <Sparkles size={15} /> Quét Ảnh AI (TikTok/FB Live)
+                                <Sparkles size={15} /> Quét Ảnh AI (TikTok Live)
                             </button>
                             <button
                                 type="button"
-                                onClick={() => setModalTab('link')}
+                                onClick={() => {
+                                    setModalTab('link');
+                                    if (videoLink) setPlatform(detectPlatform(videoLink));
+                                }}
                                 className={`flex-1 py-2.5 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
                                     modalTab === 'link'
                                         ? 'text-blue-600 border-b-2 border-blue-600 bg-white shadow-xs'
@@ -716,27 +722,6 @@ const ReportList = () => {
 
                         {/* Modal Body */}
                         <div className="p-4 sm:p-5 space-y-4 overflow-y-auto">
-                            {/* Lựa chọn Nền tảng */}
-                            <div className="flex flex-wrap items-center gap-2.5">
-                                <label className="text-xs font-bold text-stone-700 whitespace-nowrap">Nền tảng:</label>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {['TikTok', 'Facebook Reels', 'Shopee Live', 'YouTube Shorts', 'Zalo Video'].map((p) => (
-                                        <button
-                                            key={p}
-                                            type="button"
-                                            onClick={() => setPlatform(p)}
-                                            className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition cursor-pointer ${
-                                                platform === p
-                                                    ? 'bg-stone-900 text-white border-stone-900 shadow-xs'
-                                                    : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
-                                            }`}
-                                        >
-                                            {p}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
                             {/* TAB QUÉT ẢNH AI */}
                             {modalTab === 'scan' && (
                                 <>
