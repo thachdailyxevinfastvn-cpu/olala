@@ -14,6 +14,7 @@ import {
 
 export class GeminiOCRClient {
   private apiKeys: string[];
+  private paidKey?: string;
   private models: string[];
   private timeoutMs: number;
   private currentKeyIndex: number = 0;
@@ -25,9 +26,10 @@ export class GeminiOCRClient {
     }
     this.config = config;
     this.apiKeys = [...config.apiKeys];
-    // Model ưu tiên thế hệ mới: gemini-3.6-flash, gemini-3.5-flash, gemini-flash-latest
-    this.models = config.models || ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
-    this.timeoutMs = config.timeoutMs || 8000;
+    this.paidKey = config.paidKey;
+    // Model ưu tiên thế hệ mới
+    this.models = config.models || ['gemini-3.1-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+    this.timeoutMs = config.timeoutMs || 6000;
     this.currentKeyIndex = Math.floor(Math.random() * this.apiKeys.length);
   }
 
@@ -92,18 +94,29 @@ export class GeminiOCRClient {
       generationConfig
     };
 
-    // Bước 3: Gọi API với cơ chế Xoay vòng Keys & Fallback Models
+    // =========================================================================
+    // TẦNG 1: QUÉT QUA TẤT CẢ CÁC FREE KEYS (TIẾT KIỆM 100% CHI PHÍ)
+    // =========================================================================
     let lastError: any = null;
-    const totalKeys = this.apiKeys.length;
+    const totalFreeKeys = this.apiKeys.length;
 
-    for (let keyAttempt = 0; keyAttempt < totalKeys; keyAttempt++) {
+    for (let keyAttempt = 0; keyAttempt < totalFreeKeys; keyAttempt++) {
       const apiKey = this.apiKeys[this.currentKeyIndex];
-      this.currentKeyIndex = (this.currentKeyIndex + 1) % totalKeys;
+      const keyNumber = this.currentKeyIndex + 1;
+      this.currentKeyIndex = (this.currentKeyIndex + 1) % totalFreeKeys;
 
       for (const model of this.models) {
+        onProgress?.({
+          step: 'ai_analyzing',
+          message: `🤖 AI đang đọc dữ liệu (Free Key #${keyNumber})...`,
+          originalSize: compressed.originalSizeStr,
+          compressedSize: compressed.compressedSizeStr,
+          elapsedMs: Math.round(performance.now() - startTime)
+        });
+
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+        const timer = setTimeout(() => controller.abort(), 6000);
 
         try {
           const response = await fetch(endpoint, {
@@ -114,16 +127,22 @@ export class GeminiOCRClient {
           });
           clearTimeout(timer);
 
-          // Nếu gặp lỗi rate limit (429) hoặc server quá tải (503), thử ngay key khác
           if (!response.ok) {
             const errStatus = response.status;
-            console.warn(`[GeminiOCR] Status ${errStatus} on model ${model} with key #${keyAttempt + 1}. Trying next...`);
+            console.warn(`[GeminiOCR] Status ${errStatus} on model ${model} (Free Key #${keyNumber}). Chuyển key tiếp theo...`);
             lastError = new Error(`HTTP Error ${errStatus}: ${response.statusText}`);
             continue;
           }
 
           const data = await response.json();
-          const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          const parts = data?.candidates?.[0]?.content?.parts || [];
+          let rawText = '';
+          for (const p of parts) {
+            if (p.text) {
+              rawText = p.text;
+              break;
+            }
+          }
 
           if (!rawText) {
             console.warn(`[GeminiOCR] Empty text in response from ${model}`);
@@ -138,7 +157,80 @@ export class GeminiOCRClient {
             elapsedMs: Math.round(performance.now() - startTime)
           });
 
-          // Bóc tách JSON an toàn
+          const parsedData = this.parseCleanJson<T>(rawText);
+
+          onProgress?.({
+            step: 'done',
+            message: '✅ Đã trích xuất dữ liệu thành công (Free Key)!',
+            originalSize: compressed.originalSizeStr,
+            compressedSize: compressed.compressedSizeStr,
+            elapsedMs: Math.round(performance.now() - startTime)
+          });
+
+          return parsedData;
+        } catch (fetchErr: any) {
+          clearTimeout(timer);
+          lastError = fetchErr;
+          console.warn(`[GeminiOCR] Fetch error on model ${model} (Free Key #${keyNumber}):`, fetchErr?.name === 'AbortError' ? 'Timeout 6s' : fetchErr?.message);
+        }
+      }
+    }
+
+    // =========================================================================
+    // TẦNG 2: FALLBACK SANG PAID KEY DỰ PHÒNG (NẾU TẤT CẢ FREE KEYS ĐỀU NGHẼN)
+    // =========================================================================
+    if (this.paidKey) {
+      console.warn(`⚠️ [GeminiOCR] Toàn bộ ${totalFreeKeys} Free Keys đều bận/hết hạn mức chu kỳ này. Kích hoạt Paid Key dự phòng...`);
+
+      for (const model of this.models) {
+        onProgress?.({
+          step: 'ai_analyzing',
+          message: `⚡ Đang xử lý qua cổng dự phòng cao tốc...`,
+          originalSize: compressed.originalSizeStr,
+          compressedSize: compressed.compressedSizeStr,
+          elapsedMs: Math.round(performance.now() - startTime)
+        });
+
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.paidKey}`;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 10000);
+
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: controller.signal
+          });
+          clearTimeout(timer);
+
+          if (!response.ok) {
+            const errStatus = response.status;
+            console.warn(`[GeminiOCR] Paid Key Status ${errStatus} on model ${model}`);
+            lastError = new Error(`Paid Key HTTP Error ${errStatus}`);
+            continue;
+          }
+
+          const data = await response.json();
+          const parts = data?.candidates?.[0]?.content?.parts || [];
+          let rawText = '';
+          for (const p of parts) {
+            if (p.text) {
+              rawText = p.text;
+              break;
+            }
+          }
+
+          if (!rawText) continue;
+
+          onProgress?.({
+            step: 'parsing',
+            message: '📊 Đang định dạng dữ liệu trả về...',
+            originalSize: compressed.originalSizeStr,
+            compressedSize: compressed.compressedSizeStr,
+            elapsedMs: Math.round(performance.now() - startTime)
+          });
+
           const parsedData = this.parseCleanJson<T>(rawText);
 
           onProgress?.({
@@ -153,7 +245,7 @@ export class GeminiOCRClient {
         } catch (fetchErr: any) {
           clearTimeout(timer);
           lastError = fetchErr;
-          console.warn(`[GeminiOCR] Fetch error on model ${model}:`, fetchErr?.message || fetchErr);
+          console.warn(`[GeminiOCR] Paid Key fetch error:`, fetchErr?.message);
         }
       }
     }

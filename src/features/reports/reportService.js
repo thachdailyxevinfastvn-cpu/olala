@@ -7,28 +7,27 @@ import { createGeminiOCRClient } from '../../lib/gemini-ocr-compressor';
 const CLOUD_NAME = 'dda8qq92p';
 const UPLOAD_PRESET = 'skoda_upload';
 
-// Danh sách Gemini API Keys xoay vòng (Được giải mã runtime)
-const ENCODED_KEYS = [
-  "QVEuQWI4Uk42SktMa3NiQzhUOGVUamsxVERkeGV0VklVd2ZWb2NMN1FTTDVPWjJoc1pBbEE=",
-  "QVEuQWI4Uk42STFkdlpBOUd6bUk0Q0lmNTFFOEhhOXNhU256N2NNSF8wSDd4aV9kVnNEM0E=",
-  "QVEuQWI4Uk42TEQyazYxdm1IZmpmYXNjVVgya0ZkOHdMdlh2cEZuQWJWSUFQb0oyTjZ4eHc=",
-  "QVEuQWI4Uk42TG40NGZQOUpNdFJNMTdELTRyT2tvSUlFOGRkR1VvUThXbFJQN1RUOTcwRWc=",
-  "QVEuQWI4Uk42S1hNck1XcXdaOE52Y0c4Q3RrU0YyUHZ3VGtHOW1kUERQNG9qNnU2azI4VEE=",
-  "QVEuQWI4Uk42S1NoU0xIU3lNQ3VzS1lmWlRmaHM0Vjh3MlJGV21ncFFXakNnWk1sNmhSOEE=",
-  "QVEuQWI4Uk42THZKVFJxR1R0OEN2bWRueFpTXzh0ajZUMlRHTDJqX3pDdzdaak45Z1ota1E=",
-  "QVEuQWI4Uk42SWIxTkxUUDBIOG9oMmhUT1dMM295cV9rZVBqNlVjckJneUNHREpad3Q2ZXc=",
-  "QVEuQWI4Uk42SXZNRkF2Xzh5cXNiNDdrUFlWR21WM0ptck1KWkI5Q3h1Y3ZVYUI4aGluOFE=",
-  "QVEuQWI4Uk42SVdDaXJJa0xGemNJNXJ3UFFUZk1hRFZXYTVTemlPWE02RUxISmIzYUJ6UHc="
+// Danh sách Gemini API Keys miễn phí xoay vòng (4 Keys Active)
+const ENCODED_FREE_KEYS = [
+  "QVEuQWI4Uk42SktMa3NiQzhUOGVUamsxVERkeGV0VklVd2ZWb2NMN1FTTDVPWjJoc1pBbEE=", // Key 1
+  "QVEuQWI4Uk42STFkdlpBOUd6bUk0Q0lmNTFFOEhhOXNhU256N2NNSF8wSDd4aV9kVnNEM0E=", // Key 2
+  "QVEuQWI4Uk42TEQyazYxdm1IZmpmYXNjVVgya0ZkOHdMdlh2cEZuQWJWSUFQb0oyTjZ4eHc=", // Key 3
+  "QVEuQWI4Uk42TG40NGZQOUpNdFJNMTdELTRyT2tvSUlFOGRkR1VvUThXbFJQN1RUOTcwRWc="  // Key 4
 ];
-const GEMINI_API_KEYS = ENCODED_KEYS.map(k => {
+const FREE_API_KEYS = ENCODED_FREE_KEYS.map(k => {
   try { return atob(k); } catch (e) { return k; }
 });
 
-// Khởi tạo Gemini OCR Compressor Client
+// Key Trả Phí Dự Phòng (Chỉ gọi khi TẤT CẢ Free Keys đều hết hạn mức)
+const ENCODED_PAID_KEY = "QVEuQWI4Uk42TFJCX1JTX2ctODN3STZuYlpuNThzRkdMY1JjVUp2Y0dQemY5UXhENXFleVE=";
+const PAID_API_KEY = atob(ENCODED_PAID_KEY);
+
+// Khởi tạo Gemini OCR Compressor Client (Cơ chế 2 Tầng: Free -> Paid Fallback)
 const ocrClient = createGeminiOCRClient({
-  apiKeys: GEMINI_API_KEYS,
-  models: ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'],
-  timeoutMs: 8000,
+  apiKeys: FREE_API_KEYS,
+  paidKey: PAID_API_KEY,
+  models: ['gemini-3.1-flash-lite', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'],
+  timeoutMs: 6000,
   compressOptions: {
     targetWidth: 1080,
     quality: 0.82,

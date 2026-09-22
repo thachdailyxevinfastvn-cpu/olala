@@ -35,11 +35,13 @@ export interface CompressedImageResult {
 }
 
 export interface GeminiOCRConfig {
-  /** Danh sách API Keys để xoay vòng (Round-Robin) và tự động fallback */
+  /** Danh sách API Keys miễn phí để xoay vòng (Round-Robin) */
   apiKeys: string[];
-  /** Danh sách models ưu tiên thử nghiệm (mặc định: gemini-2.5-flash -> gemini-2.0-flash) */
+  /** Key trả phí dự phòng (Chỉ kích hoạt khi TẤT CẢ key miễn phí đều bị giới hạn/quá tải) */
+  paidKey?: string;
+  /** Danh sách models ưu tiên thử nghiệm */
   models?: string[];
-  /** Thời gian timeout cho mỗi request tính bằng mili-giây (mặc định 4000ms) */
+  /** Thời gian timeout cho mỗi request tính bằng mili-giây */
   timeoutMs?: number;
   /** Tùy chọn nén ảnh */
   compressOptions?: CompressOptions;
