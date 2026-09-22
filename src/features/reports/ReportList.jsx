@@ -845,13 +845,13 @@ const ReportList = () => {
                                                 <div>
                                                     <div className="text-xs font-bold text-stone-900">
                                                         Kết Quả Quét:{' '}
-                                                        <span className="text-red-600 font-bold">
+                                                        <span className="text-emerald-700 font-bold">
                                                             {allSelectedScanSessions.length} phiên đã chọn
                                                         </span>{' '}
                                                         / {scannedGroups.reduce((acc, g) => acc + g.sessions.length, 0)} phiên ({scannedGroups.length} ngày)
                                                     </div>
                                                     <div className="text-[10px] text-stone-500 mt-0.5">
-                                                        * Mặc định tự động chọn các phiên đạt chuẩn của <strong className="text-red-600">ngày gần nhất</strong>.
+                                                        * Mặc định tự động chọn các phiên đạt chuẩn của <strong className="text-emerald-700">ngày gần nhất</strong>.
                                                     </div>
                                                 </div>
 
@@ -859,7 +859,7 @@ const ReportList = () => {
                                                     <button
                                                         type="button"
                                                         onClick={() => toggleSelectAllKPIAllGroups(true)}
-                                                        className="px-2.5 py-1 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-[11px] rounded-lg transition cursor-pointer flex items-center gap-1"
+                                                        className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-[11px] rounded-lg transition cursor-pointer flex items-center gap-1"
                                                     >
                                                         ✓ Chọn tất cả đạt chuẩn
                                                     </button>
@@ -898,7 +898,7 @@ const ReportList = () => {
                                                                 </span>
                                                             </div>
 
-                                                            {/* Danh sách phiên: Đạt chuẩn nền đỏ nhạt nhẹ / trắng, Chưa đạt mờ */}
+                                                            {/* Danh sách phiên: Đạt chuẩn nền xanh lá cây khi chọn, Chưa đạt nền đỏ nhạt/mờ */}
                                                             <div className="p-2 space-y-1.5 bg-stone-50/40">
                                                                 {grp.sessions.map((s, sIdx) => {
                                                                     const isPass = s.kpi.pass;
@@ -909,11 +909,11 @@ const ReportList = () => {
                                                                             className={`p-2.5 rounded-lg border flex items-center justify-between cursor-pointer transition ${
                                                                                 isPass
                                                                                     ? s.selected
-                                                                                        ? 'bg-red-50/80 border-red-400 ring-1 ring-red-400/30 shadow-xs'
-                                                                                        : 'bg-white border-stone-200 opacity-65 hover:opacity-95'
+                                                                                        ? 'bg-emerald-50 border-emerald-400 ring-1 ring-emerald-400/30 shadow-xs'
+                                                                                        : 'bg-emerald-50/40 border-emerald-200/70 opacity-65 hover:opacity-95'
                                                                                     : s.selected
-                                                                                    ? 'bg-stone-100 border-stone-400 ring-1 ring-stone-400/30 shadow-xs'
-                                                                                    : 'bg-stone-50/50 border-stone-200/70 opacity-50 hover:opacity-80'
+                                                                                    ? 'bg-rose-50 border-rose-400 ring-1 ring-rose-400/30 shadow-xs'
+                                                                                    : 'bg-rose-50/40 border-rose-200/60 opacity-50 hover:opacity-80'
                                                                             }`}
                                                                         >
                                                                             <div className="flex items-center gap-2.5">
@@ -922,28 +922,28 @@ const ReportList = () => {
                                                                                     checked={s.selected}
                                                                                     onChange={() => {}}
                                                                                     className={`w-4 h-4 rounded cursor-pointer ${
-                                                                                        isPass ? 'accent-red-600' : 'accent-stone-600'
+                                                                                        isPass ? 'accent-emerald-700' : 'accent-rose-700'
                                                                                     }`}
                                                                                 />
                                                                                 <div>
                                                                                     <div
                                                                                         className={`font-bold text-xs ${
-                                                                                            isPass ? 'text-red-950' : 'text-stone-700'
+                                                                                            isPass ? 'text-emerald-950' : 'text-rose-950'
                                                                                         }`}
                                                                                     >
                                                                                         {s.note}
                                                                                     </div>
                                                                                     <div
                                                                                         className={`text-[11px] mt-0.5 ${
-                                                                                            isPass ? 'text-red-900/80' : 'text-stone-600'
+                                                                                            isPass ? 'text-emerald-800/80' : 'text-rose-800/80'
                                                                                         }`}
                                                                                     >
                                                                                         Thời lượng:{' '}
-                                                                                        <strong className={isPass ? 'text-red-950' : 'text-stone-800'}>
+                                                                                        <strong className={isPass ? 'text-emerald-950' : 'text-rose-950'}>
                                                                                             {s.metric1} phút
                                                                                         </strong>{' '}
                                                                                         • Lượt xem:{' '}
-                                                                                        <strong className={isPass ? 'text-red-950' : 'text-stone-800'}>
+                                                                                        <strong className={isPass ? 'text-emerald-950' : 'text-rose-950'}>
                                                                                             {s.metric2.toLocaleString()}
                                                                                         </strong>
                                                                                     </div>
@@ -951,11 +951,11 @@ const ReportList = () => {
                                                                             </div>
                                                                             <div>
                                                                                 {isPass ? (
-                                                                                    <span className="text-[10px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-md">
+                                                                                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
                                                                                         Đạt chuẩn
                                                                                     </span>
                                                                                 ) : (
-                                                                                    <span className="text-[10px] font-bold bg-stone-200 text-stone-700 px-2 py-0.5 rounded-md">
+                                                                                    <span className="text-[10px] font-bold bg-rose-100 text-rose-800 px-2 py-0.5 rounded-md">
                                                                                         Chưa đạt
                                                                                     </span>
                                                                                 )}
