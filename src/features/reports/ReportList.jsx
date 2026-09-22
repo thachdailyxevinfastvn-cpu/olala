@@ -698,7 +698,7 @@ const ReportList = () => {
                                 }}
                                 className={`flex-1 py-2.5 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
                                     modalTab === 'scan'
-                                        ? 'text-emerald-700 border-b-2 border-emerald-600 bg-white shadow-xs'
+                                        ? 'text-red-600 border-b-2 border-red-600 bg-white shadow-xs'
                                         : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100/60'
                                 }`}
                             >
@@ -712,7 +712,7 @@ const ReportList = () => {
                                 }}
                                 className={`flex-1 py-2.5 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
                                     modalTab === 'link'
-                                        ? 'text-blue-600 border-b-2 border-blue-600 bg-white shadow-xs'
+                                        ? 'text-red-600 border-b-2 border-red-600 bg-white shadow-xs'
                                         : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100/60'
                                 }`}
                             >
@@ -736,8 +736,8 @@ const ReportList = () => {
                                         }}
                                         className={`border-2 border-dashed rounded-xl p-4 sm:p-5 text-center cursor-pointer transition relative ${
                                             analyzing
-                                                ? 'border-blue-400 bg-blue-50/40'
-                                                : 'border-stone-300 hover:border-emerald-600 hover:bg-emerald-50/20'
+                                                ? 'border-red-400 bg-red-50/40'
+                                                : 'border-stone-300 hover:border-red-600 hover:bg-red-50/20'
                                         }`}
                                     >
                                         <input
@@ -762,7 +762,7 @@ const ReportList = () => {
                                                     <div className="text-[11px] text-stone-500 mt-0.5">
                                                         Dung lượng gốc: {((selectedFile?.size || 0) / 1024).toFixed(0)} KB • Bấm để đổi ảnh khác
                                                     </div>
-                                                    <div className="text-[11px] text-emerald-700 font-medium mt-1">
+                                                    <div className="text-[11px] text-red-600 font-medium mt-1">
                                                         💡 Bạn cũng có thể nhấn Ctrl+V để dán ảnh chụp trực tiếp
                                                     </div>
                                                 </div>
@@ -771,7 +771,7 @@ const ReportList = () => {
                                             <div className="space-y-1">
                                                 <div className="text-2xl">📸</div>
                                                 <div className="text-xs font-bold text-stone-800">
-                                                    Tải lên hoặc dán (Ctrl+V) ảnh chụp màn hình phân tích TikTok/FB Live
+                                                    Tải lên hoặc dán (Ctrl+V) ảnh chụp màn hình phân tích TikTok Live
                                                 </div>
                                                 <div className="text-[11px] text-stone-500">
                                                     AI sẽ tự động nén tối ưu và đọc số phút, số view của từng phiên
@@ -785,10 +785,10 @@ const ReportList = () => {
                                         <div className="bg-stone-900 text-white p-3.5 rounded-xl space-y-2.5 shadow-sm animate-in fade-in duration-200">
                                             <div className="flex items-center justify-between text-xs font-semibold">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                                                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
                                                     <span>{scanProgress?.message || 'Đang quét ảnh...'}</span>
                                                 </div>
-                                                <span className="font-mono text-emerald-400 font-bold">{scanElapsedSec}s</span>
+                                                <span className="font-mono text-red-400 font-bold">{scanElapsedSec}s</span>
                                             </div>
 
                                             {/* 3 Step Indicators */}
@@ -796,9 +796,9 @@ const ReportList = () => {
                                                 <div
                                                     className={`py-1.5 px-1 rounded-lg border text-[11px] font-medium transition ${
                                                         scanProgress?.step === 'compressing'
-                                                            ? 'bg-emerald-950 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500'
+                                                            ? 'bg-red-950 border-red-500 text-red-300 ring-1 ring-red-500'
                                                             : scanProgress?.originalSize
-                                                            ? 'bg-emerald-900/50 border-emerald-700/60 text-emerald-300'
+                                                            ? 'bg-red-900/40 border-red-700/60 text-red-300'
                                                             : 'bg-stone-800 border-stone-700 text-stone-400'
                                                     }`}
                                                 >
@@ -813,9 +813,9 @@ const ReportList = () => {
                                                 <div
                                                     className={`py-1.5 px-1 rounded-lg border text-[11px] font-medium transition ${
                                                         scanProgress?.step === 'ai_analyzing'
-                                                            ? 'bg-blue-950 border-blue-500 text-blue-300 ring-1 ring-blue-500'
+                                                            ? 'bg-red-950 border-red-500 text-red-300 ring-1 ring-red-500'
                                                             : scanProgress?.step === 'parsing' || scanProgress?.step === 'done'
-                                                            ? 'bg-emerald-900/50 border-emerald-700/60 text-emerald-300'
+                                                            ? 'bg-red-900/40 border-red-700/60 text-red-300'
                                                             : 'bg-stone-800 border-stone-700 text-stone-400'
                                                     }`}
                                                 >
@@ -826,7 +826,7 @@ const ReportList = () => {
                                                 <div
                                                     className={`py-1.5 px-1 rounded-lg border text-[11px] font-medium transition ${
                                                         scanProgress?.step === 'done'
-                                                            ? 'bg-emerald-950 border-emerald-500 text-emerald-300'
+                                                            ? 'bg-red-950 border-red-500 text-red-300'
                                                             : 'bg-stone-800 border-stone-700 text-stone-400'
                                                     }`}
                                                 >
@@ -845,13 +845,13 @@ const ReportList = () => {
                                                 <div>
                                                     <div className="text-xs font-bold text-stone-900">
                                                         Kết Quả Quét:{' '}
-                                                        <span className="text-emerald-700 font-bold">
+                                                        <span className="text-red-600 font-bold">
                                                             {allSelectedScanSessions.length} phiên đã chọn
                                                         </span>{' '}
                                                         / {scannedGroups.reduce((acc, g) => acc + g.sessions.length, 0)} phiên ({scannedGroups.length} ngày)
                                                     </div>
                                                     <div className="text-[10px] text-stone-500 mt-0.5">
-                                                        * Mặc định tự động chọn các phiên đạt chuẩn của <strong className="text-emerald-700">ngày gần nhất</strong>.
+                                                        * Mặc định tự động chọn các phiên đạt chuẩn của <strong className="text-red-600">ngày gần nhất</strong>.
                                                     </div>
                                                 </div>
 
@@ -859,7 +859,7 @@ const ReportList = () => {
                                                     <button
                                                         type="button"
                                                         onClick={() => toggleSelectAllKPIAllGroups(true)}
-                                                        className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-[11px] rounded-lg transition cursor-pointer flex items-center gap-1"
+                                                        className="px-2.5 py-1 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-[11px] rounded-lg transition cursor-pointer flex items-center gap-1"
                                                     >
                                                         ✓ Chọn tất cả đạt chuẩn
                                                     </button>
@@ -884,8 +884,8 @@ const ReportList = () => {
                                                             key={grp.date || grpIdx}
                                                             className="border border-stone-200 rounded-xl bg-white overflow-hidden shadow-xs"
                                                         >
-                                                            {/* Header Ngày: Nền Xanh Đậm (#065f46) */}
-                                                            <div className="bg-[#065f46] text-white px-3.5 py-2 flex items-center justify-between">
+                                                            {/* Header Ngày: Nền Đỏ Đậm MG (#991b1b) */}
+                                                            <div className="bg-[#991b1b] text-white px-3.5 py-2 flex items-center justify-between">
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="text-xs">📅</span>
                                                                     <span className="text-xs font-bold text-white tracking-wide">
@@ -893,12 +893,12 @@ const ReportList = () => {
                                                                     </span>
                                                                 </div>
                                                                 {/* Đếm số phiên rút gọn 1/2, 2/3 */}
-                                                                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-950/70 text-emerald-200 border border-emerald-700/60 font-mono">
+                                                                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-red-950/80 text-red-200 border border-red-800/80 font-mono">
                                                                     {selectedCount}/{totalSessions}
                                                                 </span>
                                                             </div>
 
-                                                            {/* Danh sách phiên: Đạt chuẩn nền xanh nhạt, Chưa đạt nền đỏ nhạt */}
+                                                            {/* Danh sách phiên: Đạt chuẩn nền đỏ nhạt nhẹ / trắng, Chưa đạt mờ */}
                                                             <div className="p-2 space-y-1.5 bg-stone-50/40">
                                                                 {grp.sessions.map((s, sIdx) => {
                                                                     const isPass = s.kpi.pass;
@@ -909,11 +909,11 @@ const ReportList = () => {
                                                                             className={`p-2.5 rounded-lg border flex items-center justify-between cursor-pointer transition ${
                                                                                 isPass
                                                                                     ? s.selected
-                                                                                        ? 'bg-emerald-50 border-emerald-400 ring-1 ring-emerald-400/30 shadow-xs'
-                                                                                        : 'bg-emerald-50/50 border-emerald-200/70 opacity-60 hover:opacity-90'
+                                                                                        ? 'bg-red-50/80 border-red-400 ring-1 ring-red-400/30 shadow-xs'
+                                                                                        : 'bg-white border-stone-200 opacity-65 hover:opacity-95'
                                                                                     : s.selected
-                                                                                    ? 'bg-rose-50 border-rose-400 ring-1 ring-rose-400/30 shadow-xs'
-                                                                                    : 'bg-rose-50/50 border-rose-200/70 opacity-60 hover:opacity-90'
+                                                                                    ? 'bg-stone-100 border-stone-400 ring-1 ring-stone-400/30 shadow-xs'
+                                                                                    : 'bg-stone-50/50 border-stone-200/70 opacity-50 hover:opacity-80'
                                                                             }`}
                                                                         >
                                                                             <div className="flex items-center gap-2.5">
@@ -922,28 +922,28 @@ const ReportList = () => {
                                                                                     checked={s.selected}
                                                                                     onChange={() => {}}
                                                                                     className={`w-4 h-4 rounded cursor-pointer ${
-                                                                                        isPass ? 'accent-emerald-700' : 'accent-rose-700'
+                                                                                        isPass ? 'accent-red-600' : 'accent-stone-600'
                                                                                     }`}
                                                                                 />
                                                                                 <div>
                                                                                     <div
                                                                                         className={`font-bold text-xs ${
-                                                                                            isPass ? 'text-emerald-950' : 'text-rose-950'
+                                                                                            isPass ? 'text-red-950' : 'text-stone-700'
                                                                                         }`}
                                                                                     >
                                                                                         {s.note}
                                                                                     </div>
                                                                                     <div
                                                                                         className={`text-[11px] mt-0.5 ${
-                                                                                            isPass ? 'text-emerald-800/80' : 'text-rose-800/80'
+                                                                                            isPass ? 'text-red-900/80' : 'text-stone-600'
                                                                                         }`}
                                                                                     >
                                                                                         Thời lượng:{' '}
-                                                                                        <strong className={isPass ? 'text-emerald-950' : 'text-rose-950'}>
+                                                                                        <strong className={isPass ? 'text-red-950' : 'text-stone-800'}>
                                                                                             {s.metric1} phút
                                                                                         </strong>{' '}
                                                                                         • Lượt xem:{' '}
-                                                                                        <strong className={isPass ? 'text-emerald-950' : 'text-rose-950'}>
+                                                                                        <strong className={isPass ? 'text-red-950' : 'text-stone-800'}>
                                                                                             {s.metric2.toLocaleString()}
                                                                                         </strong>
                                                                                     </div>
@@ -951,11 +951,11 @@ const ReportList = () => {
                                                                             </div>
                                                                             <div>
                                                                                 {isPass ? (
-                                                                                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
+                                                                                    <span className="text-[10px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-md">
                                                                                         Đạt chuẩn
                                                                                     </span>
                                                                                 ) : (
-                                                                                    <span className="text-[10px] font-bold bg-rose-100 text-rose-800 px-2 py-0.5 rounded-md">
+                                                                                    <span className="text-[10px] font-bold bg-stone-200 text-stone-700 px-2 py-0.5 rounded-md">
                                                                                         Chưa đạt
                                                                                     </span>
                                                                                 )}
@@ -983,7 +983,7 @@ const ReportList = () => {
                                             placeholder="Dán link video vào đây..."
                                             value={videoLink}
                                             onChange={handleLinkChange}
-                                            className="w-full border border-stone-300 p-2.5 rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                            className="w-full border border-stone-300 p-2.5 rounded-xl text-sm outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
                                         />
                                     </div>
                                     <div className="space-y-1">
@@ -1053,7 +1053,7 @@ const ReportList = () => {
                                                 type="button"
                                                 onClick={handleSaveScan}
                                                 disabled={uploading || allSelectedScanSessions.length === 0}
-                                                className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-300 text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer disabled:cursor-not-allowed"
+                                                className="bg-red-600 hover:bg-red-700 disabled:bg-stone-300 text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer disabled:cursor-not-allowed"
                                             >
                                                 {uploading ? (
                                                     <>
@@ -1083,7 +1083,7 @@ const ReportList = () => {
                                             type="button"
                                             onClick={handleSaveLink}
                                             disabled={uploading || !videoLink}
-                                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-stone-300 text-white px-6 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer disabled:cursor-not-allowed"
+                                            className="bg-red-600 hover:bg-red-700 disabled:bg-stone-300 text-white px-6 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer disabled:cursor-not-allowed"
                                         >
                                             {uploading ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
                                             {uploading ? 'Đang lưu...' : 'Lưu Báo Cáo Video'}
