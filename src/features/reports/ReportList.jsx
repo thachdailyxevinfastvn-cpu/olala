@@ -214,61 +214,160 @@ const ReportList = () => {
         return { pass: false, msg: 'Không đạt' };
     };
 
-    const handleFileChange = async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setSelectedFile(file);
-            setPreviewUrl(URL.createObjectURL(file));
-            setScannedGroups([]);
-            setSelectedGroup(null);
-            setAnalyzing(true);
-            setScanProgress({ step: 'compressing', message: '🗜️ Đang nén tối ưu ảnh...' });
+    const [scanElapsedSec, setScanElapsedSec] = useState(0);
 
-            try {
-                const aiData = await reportService.analyzeImageWithAI(file, (p) => {
-                    setScanProgress(p);
+    // Xử lý nén & quét ảnh AI
+    const processImageFile = async (file) => {
+        if (!file) return;
+        setSelectedFile(file);
+        setPreviewUrl(URL.createObjectURL(file));
+        setScannedGroups([]);
+        setSelectedGroup(null);
+        setAnalyzing(true);
+        setScanProgress({ step: 'compressing', message: '🗜️ Đang nén tối ưu ảnh chụp màn hình...' });
+
+        const startTime = Date.now();
+        setScanElapsedSec(0);
+        const timer = setInterval(() => {
+            setScanElapsedSec(Number(((Date.now() - startTime) / 1000).toFixed(1)));
+        }, 100);
+
+        try {
+            const aiData = await reportService.analyzeImageWithAI(file, (p) => {
+                setScanProgress(p);
+            });
+
+            let rawGroups = [];
+            if (Array.isArray(aiData) && aiData.length > 0) {
+                rawGroups = aiData;
+            } else if (aiData && aiData.sessions) {
+                rawGroups = [{ date: aiData.reportDate || aiData.date, sessions: aiData.sessions }];
+            }
+
+            if (rawGroups.length > 0) {
+                // Sắp xếp các ngày giảm dần (ngày gần nhất / mới nhất lên đầu)
+                const sortedDays = [...rawGroups].sort((a, b) => {
+                    const dateA = String(a.date || '');
+                    const dateB = String(b.date || '');
+                    return dateB.localeCompare(dateA);
                 });
 
-                if (Array.isArray(aiData) && aiData.length > 0) {
-                    const groups = aiData.map(grp => ({
-                        date: grp.date,
+                const latestDate = sortedDays[0]?.date;
+
+                const groups = sortedDays.map((grp) => {
+                    const isLatest = grp.date === latestDate;
+                    return {
+                        date: grp.date || new Date().toISOString().slice(0, 10),
                         sessions: (grp.sessions || []).map((s, idx) => {
                             const kpi = checkKPI(s.minutes, s.views);
-                            return { id: idx, metric1: s.minutes, metric2: s.views, note: s.note || `Phiên ${idx + 1}`, selected: kpi.pass, kpi: kpi };
-                        })
-                    }));
-                    setScannedGroups(groups);
-                    if (groups.length === 1) setSelectedGroup(groups[0]);
-                    toast.success(`Đã đọc xong: ${groups.length} ngày`);
-                } else if (aiData && aiData.sessions) {
-                    const group = {
-                        date: aiData.reportDate || aiData.date,
-                        sessions: aiData.sessions.map((s, idx) => {
-                            const kpi = checkKPI(s.minutes, s.views);
-                            return { id: idx, metric1: s.minutes, metric2: s.views, note: s.note || `Phiên ${idx + 1}`, selected: kpi.pass, kpi: kpi };
+                            // YÊU CẦU: Tự động chọn phiên đạt KPI của NGÀY GẦN NHẤT, các ngày khác mặc định bỏ tick
+                            const isSelected = isLatest ? kpi.pass : false;
+                            return {
+                                id: idx,
+                                metric1: Number(s.minutes) || 0,
+                                metric2: Number(s.views) || 0,
+                                note: s.note || `Phiên ${idx + 1}`,
+                                selected: isSelected,
+                                kpi
+                            };
                         })
                     };
-                    setScannedGroups([group]);
-                    setSelectedGroup(group);
-                    toast.success("Đã đọc xong dữ liệu!");
-                } else {
-                    toast.error("Không đọc được số liệu. Vui lòng thử lại!");
-                }
-            } catch (err) {
-                console.error("UI Error:", err);
-                toast.error("Lỗi xử lý ảnh: " + (err.message || 'Thử lại'));
-            } finally {
-                setAnalyzing(false);
+                });
+
+                setScannedGroups(groups);
+                toast.success(`Đã quét xong: ${groups.length} ngày! (Mặc định chọn ngày gần nhất: ${latestDate})`);
+            } else {
+                toast.error("Không tìm thấy số liệu phiên live từ ảnh. Vui lòng chụp rõ nét hơn.");
             }
+        } catch (err) {
+            console.error("UI Error:", err);
+            toast.error("Lỗi xử lý ảnh: " + (err.message || 'Thử lại'));
+        } finally {
+            clearInterval(timer);
+            setAnalyzing(false);
         }
     };
 
+    const handleFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            processImageFile(file);
+        }
+    };
+
+    // Hỗ trợ Paste ảnh từ Clipboard (Ctrl + V) khi mở modal tab scan
+    useEffect(() => {
+        if (!isModalOpen || modalTab !== 'scan') return;
+        const handlePaste = (e) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.startsWith('image/')) {
+                    const file = items[i].getAsFile();
+                    if (file) {
+                        processImageFile(file);
+                        break;
+                    }
+                }
+            }
+        };
+        window.addEventListener('paste', handlePaste);
+        return () => window.removeEventListener('paste', handlePaste);
+    }, [isModalOpen, modalTab, platform]);
+
+    // Toggle chọn 1 phiên live
+    const toggleSessionSelect = (grpIdx, sIdx) => {
+        setScannedGroups((prev) =>
+            prev.map((grp, gI) => {
+                if (gI !== grpIdx) return grp;
+                return {
+                    ...grp,
+                    sessions: grp.sessions.map((s, sI) =>
+                        sI === sIdx ? { ...s, selected: !s.selected } : s
+                    )
+                };
+            })
+        );
+    };
+
+    // Chọn hoặc bỏ chọn tất cả phiên đạt KPI trên toàn bộ các ngày
+    const toggleSelectAllKPIAllGroups = (select) => {
+        setScannedGroups((prev) =>
+            prev.map((grp) => ({
+                ...grp,
+                sessions: grp.sessions.map((s) =>
+                    s.kpi.pass ? { ...s, selected: select } : s
+                )
+            }))
+        );
+    };
+
+    // Tổng hợp các phiên đang được tick chọn trên TẤT CẢ các ngày
+    const allSelectedScanSessions = useMemo(() => {
+        return scannedGroups.flatMap((grp) =>
+            grp.sessions
+                .filter((s) => s.selected)
+                .map((s) => ({
+                    date: grp.date,
+                    metric1: s.metric1,
+                    metric2: s.metric2,
+                    note: s.note,
+                    kpi: s.kpi
+                }))
+        );
+    }, [scannedGroups]);
+
     const handleSaveScan = () => {
         if (isSubmittingRef.current) return;
-        if (!selectedGroup) return;
-        const valid = selectedGroup.sessions.filter(s => s.selected);
-        if (valid.length === 0) { toast.error("Chưa chọn phiên nào!"); return; }
-        checkOverwrite(selectedGroup.date, submitScan);
+        if (allSelectedScanSessions.length === 0) {
+            toast.error("Vui lòng chọn ít nhất 1 phiên livestream đạt chuẩn.");
+            return;
+        }
+
+        // Lấy danh sách các ngày có phiên được chọn
+        const selectedDates = [...new Set(allSelectedScanSessions.map(s => s.date))];
+        const primaryDate = selectedDates[0] || new Date().toISOString().slice(0, 10);
+        checkOverwrite(primaryDate, submitScan);
     };
 
     // --- HÀM XỬ LÝ LƯU LINK VIDEO (ĐÃ CẢI TIẾN CHECK TRÙNG) ---
@@ -341,8 +440,17 @@ const ReportList = () => {
         try {
             const img = await reportService.uploadImage(selectedFile);
             const user = authService.getCurrentUser() || { id: 'unknown', name: 'Nhân viên' };
-            const list = selectedGroup.sessions.filter(s => s.selected).map(s => ({
-                staffID: user.id || 'S001', staffName: user.name || user.username, reportDate: selectedGroup.date, type: 'Livestream', platform, metric1: s.metric1, metric2: s.metric2, status: 'Đã duyệt', imageUrl: img, note: s.note
+            const list = allSelectedScanSessions.map(s => ({
+                staffID: user.id || 'S001',
+                staffName: user.name || user.username,
+                reportDate: s.date,
+                type: 'Livestream',
+                platform,
+                metric1: s.metric1,
+                metric2: s.metric2,
+                status: 'Đã duyệt',
+                imageUrl: img,
+                note: s.note
             }));
             await finishSubmit(list, overwrite);
         } catch (e) {
@@ -551,101 +659,451 @@ const ReportList = () => {
                 )}
             </div>
 
-            {/* MODAL & VIEW IMAGE GIỮ NGUYÊN (Code cũ) */}
+            {/* MODAL BÁO CÁO MỚI (LIVE STREAM OCR SCANNER STYLE) */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-                    <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-                        <div className="p-4 border-b flex justify-between items-center bg-gray-50 shrink-0">
-                            <h3 className="font-bold text-lg text-gray-800">Tạo Báo Cáo</h3>
-                            <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-red-100 hover:text-red-500 rounded-full transition"><X size={20} /></button>
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+                    <div
+                        className="bg-white w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl border border-stone-200 flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200"
+                        style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
+                    >
+                        {/* Header Dark Gradient */}
+                        <div className="bg-gradient-to-r from-stone-900 to-stone-800 text-white px-5 py-3.5 flex items-center justify-between shrink-0">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xl">📡</span>
+                                    <h3 className="text-sm sm:text-base font-bold text-white tracking-wide">
+                                        Báo Cáo Hoạt Động Livestream (Quét Ảnh AI)
+                                    </h3>
+                                </div>
+                                <p className="text-[11px] text-stone-400 mt-0.5">
+                                    Dành cho đội ngũ kinh doanh & truyền thông • MG Motor Bình Dương
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsModalOpen(false)}
+                                className="text-stone-400 hover:text-white text-lg font-bold p-1 cursor-pointer transition"
+                            >
+                                ✕
+                            </button>
                         </div>
-                        <div className="flex border-b border-gray-200">
-                            <button onClick={() => setModalTab('scan')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 ${modalTab === 'scan' ? 'text-red-600 border-b-2 border-red-600 bg-red-50' : 'text-gray-500 hover:bg-gray-50'}`}><Sparkles size={16} /> Quét Ảnh AI</button>
-                            <button onClick={() => setModalTab('link')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 ${modalTab === 'link' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}><LinkIcon size={16} /> Nhập Link Video</button>
+
+                        {/* Tabs chuyển đổi giữa Quét Ảnh AI và Nhập Link Video */}
+                        <div className="flex border-b border-stone-200 bg-stone-50 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => setModalTab('scan')}
+                                className={`flex-1 py-2.5 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
+                                    modalTab === 'scan'
+                                        ? 'text-emerald-700 border-b-2 border-emerald-600 bg-white shadow-xs'
+                                        : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100/60'
+                                }`}
+                            >
+                                <Sparkles size={15} /> Quét Ảnh AI (TikTok/FB Live)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setModalTab('link')}
+                                className={`flex-1 py-2.5 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
+                                    modalTab === 'link'
+                                        ? 'text-blue-600 border-b-2 border-blue-600 bg-white shadow-xs'
+                                        : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100/60'
+                                }`}
+                            >
+                                <LinkIcon size={15} /> Nhập Link Video (Reels/Shorts)
+                            </button>
                         </div>
-                        <div className="p-5 space-y-4 overflow-y-auto">
-                            <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 uppercase">Nền tảng</label><select value={platform} onChange={e => setPlatform(e.target.value)} className="w-full border p-2 rounded text-sm outline-none"><option>TikTok</option><option>Facebook Reels</option><option>YouTube Shorts</option><option>Zalo Video</option></select></div>
+
+                        {/* Modal Body */}
+                        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto">
+                            {/* Lựa chọn Nền tảng */}
+                            <div className="flex flex-wrap items-center gap-2.5">
+                                <label className="text-xs font-bold text-stone-700 whitespace-nowrap">Nền tảng:</label>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {['TikTok', 'Facebook Reels', 'Shopee Live', 'YouTube Shorts', 'Zalo Video'].map((p) => (
+                                        <button
+                                            key={p}
+                                            type="button"
+                                            onClick={() => setPlatform(p)}
+                                            className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition cursor-pointer ${
+                                                platform === p
+                                                    ? 'bg-stone-900 text-white border-stone-900 shadow-xs'
+                                                    : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                                            }`}
+                                        >
+                                            {p}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* TAB QUÉT ẢNH AI */}
                             {modalTab === 'scan' && (
                                 <>
-                                    <div className="border-2 border-dashed border-gray-300 rounded-xl h-32 flex flex-col items-center justify-center bg-slate-50 relative overflow-hidden cursor-pointer hover:border-blue-400 transition" onClick={() => document.getElementById('fileInput').click()}>
-                                        {previewUrl ? <img src={previewUrl} className="w-full h-full object-cover" /> : <div className="text-center p-2"><ImageIcon className="mx-auto text-gray-400 mb-1" /><span className="text-[10px] text-gray-500 font-bold">Chọn ảnh Live/Analytics</span></div>}
-                                        {analyzing && (
-                                            <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center p-3 text-center">
-                                                <Loader2 className="animate-spin text-blue-600 mb-2" size={24} />
-                                                <span className="text-xs font-bold text-gray-800">{scanProgress?.message || 'Đang quét ảnh...'}</span>
-                                                {scanProgress?.originalSize && (
-                                                    <span className="text-[10px] text-blue-600 font-semibold mt-1">
-                                                        Nén: {scanProgress.originalSize} ➔ {scanProgress.compressedSize}
-                                                    </span>
-                                                )}
+                                    {/* Khung Upload Ảnh & Kéo Thả */}
+                                    <div
+                                        onClick={() => document.getElementById('fileInputLiveScan')?.click()}
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            const file = e.dataTransfer.files?.[0];
+                                            if (file) processImageFile(file);
+                                        }}
+                                        className={`border-2 border-dashed rounded-xl p-4 sm:p-5 text-center cursor-pointer transition relative ${
+                                            analyzing
+                                                ? 'border-blue-400 bg-blue-50/40'
+                                                : 'border-stone-300 hover:border-emerald-600 hover:bg-emerald-50/20'
+                                        }`}
+                                    >
+                                        <input
+                                            id="fileInputLiveScan"
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleFileChange}
+                                        />
+
+                                        {previewUrl ? (
+                                            <div className="flex items-center justify-center gap-4">
+                                                <img
+                                                    src={previewUrl}
+                                                    alt="Preview"
+                                                    className="h-18 sm:h-20 w-auto object-cover rounded-lg border shadow-xs"
+                                                />
+                                                <div className="text-left">
+                                                    <div className="text-xs font-bold text-stone-800">
+                                                        {selectedFile?.name || 'Ảnh chụp màn hình'}
+                                                    </div>
+                                                    <div className="text-[11px] text-stone-500 mt-0.5">
+                                                        Dung lượng gốc: {((selectedFile?.size || 0) / 1024).toFixed(0)} KB • Bấm để đổi ảnh khác
+                                                    </div>
+                                                    <div className="text-[11px] text-emerald-700 font-medium mt-1">
+                                                        💡 Bạn cũng có thể nhấn Ctrl+V để dán ảnh chụp trực tiếp
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-1">
+                                                <div className="text-2xl">📸</div>
+                                                <div className="text-xs font-bold text-stone-800">
+                                                    Tải lên hoặc dán (Ctrl+V) ảnh chụp màn hình phân tích TikTok/FB Live
+                                                </div>
+                                                <div className="text-[11px] text-stone-500">
+                                                    AI sẽ tự động nén tối ưu và đọc số phút, số view của từng phiên
+                                                </div>
                                             </div>
                                         )}
                                     </div>
-                                    <input id="fileInput" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                                    {!selectedGroup && scannedGroups.length > 0 && (
-                                        <div className="border-t pt-4">
-                                            <h4 className="font-bold text-sm text-gray-700 mb-3 flex items-center gap-2"><Calendar size={16} className="text-blue-600" /> Chọn ngày nhập liệu</h4>
-                                            <div className="space-y-2">{scannedGroups.map((grp, idx) => (<div key={idx} onClick={() => setSelectedGroup(grp)} className="p-3 border rounded-lg hover:border-green-500 hover:bg-green-50 cursor-pointer flex justify-between items-center transition"><span className="font-bold text-gray-800">{grp.date}</span><span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-full">{grp.sessions.length} phiên</span></div>))}</div>
+
+                                    {/* Thanh Tiến Trình 3 Bước Khi Đang Phân Tích */}
+                                    {analyzing && (
+                                        <div className="bg-stone-900 text-white p-3.5 rounded-xl space-y-2.5 shadow-sm animate-in fade-in duration-200">
+                                            <div className="flex items-center justify-between text-xs font-semibold">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                                                    <span>{scanProgress?.message || 'Đang quét ảnh...'}</span>
+                                                </div>
+                                                <span className="font-mono text-emerald-400 font-bold">{scanElapsedSec}s</span>
+                                            </div>
+
+                                            {/* 3 Step Indicators */}
+                                            <div className="grid grid-cols-3 gap-1.5 text-center">
+                                                <div
+                                                    className={`py-1.5 px-1 rounded-lg border text-[11px] font-medium transition ${
+                                                        scanProgress?.step === 'compressing'
+                                                            ? 'bg-emerald-950 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500'
+                                                            : scanProgress?.originalSize
+                                                            ? 'bg-emerald-900/50 border-emerald-700/60 text-emerald-300'
+                                                            : 'bg-stone-800 border-stone-700 text-stone-400'
+                                                    }`}
+                                                >
+                                                    <div>1. Nén ảnh</div>
+                                                    <div className="text-[9px] opacity-75">
+                                                        {scanProgress?.originalSize
+                                                            ? `${scanProgress.originalSize} ➔ ${scanProgress.compressedSize}`
+                                                            : 'Thuật toán OCR'}
+                                                    </div>
+                                                </div>
+
+                                                <div
+                                                    className={`py-1.5 px-1 rounded-lg border text-[11px] font-medium transition ${
+                                                        scanProgress?.step === 'ai_analyzing'
+                                                            ? 'bg-blue-950 border-blue-500 text-blue-300 ring-1 ring-blue-500'
+                                                            : scanProgress?.step === 'parsing' || scanProgress?.step === 'done'
+                                                            ? 'bg-emerald-900/50 border-emerald-700/60 text-emerald-300'
+                                                            : 'bg-stone-800 border-stone-700 text-stone-400'
+                                                    }`}
+                                                >
+                                                    <div>2. AI Vision</div>
+                                                    <div className="text-[9px] opacity-75">Trích xuất số liệu</div>
+                                                </div>
+
+                                                <div
+                                                    className={`py-1.5 px-1 rounded-lg border text-[11px] font-medium transition ${
+                                                        scanProgress?.step === 'done'
+                                                            ? 'bg-emerald-950 border-emerald-500 text-emerald-300'
+                                                            : 'bg-stone-800 border-stone-700 text-stone-400'
+                                                    }`}
+                                                >
+                                                    <div>3. Chuẩn KPI</div>
+                                                    <div className="text-[9px] opacity-75">≥30p hoặc ≥100v</div>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
-                                    {selectedGroup && (
-                                        <div className="border-t pt-4 animate-in slide-in-from-right-4 duration-300">
-                                            <div className="flex justify-between items-center mb-3">
-                                                <button onClick={() => { if (scannedGroups.length > 1) setSelectedGroup(null) }} className={`text-xs flex items-center gap-1 text-gray-500 hover:text-black ${scannedGroups.length <= 1 ? 'hidden' : ''}`}><ArrowLeft size={12} /> Quay lại</button>
-                                                <h4 className="font-bold text-sm text-gray-700 flex items-center gap-2"><Sparkles size={16} className="text-purple-600" /> {selectedGroup.date}</h4>
-                                            </div>
-                                            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                                                {selectedGroup.sessions.map((s) => (
-                                                    <div key={s.id} className={`p-3 rounded-lg border flex items-center gap-3 ${!s.kpi.pass ? 'bg-gray-100 border-gray-200 opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-blue-300'} ${s.selected ? 'border-green-500 bg-green-50' : ''}`} onClick={() => { if (s.kpi.pass) { const updated = selectedGroup.sessions.map(ss => ss.id === s.id ? { ...ss, selected: !ss.selected } : ss); setSelectedGroup({ ...selectedGroup, sessions: updated }); } }}>
-                                                        <div className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${s.selected ? 'bg-green-500 border-green-500 text-white' : 'bg-white'} ${!s.kpi.pass ? 'bg-gray-200 border-gray-300' : ''}`}>{s.selected && <CheckCircle size={14} />}</div>
-                                                        <div className="flex-1"><div className="flex justify-between"><span className="font-bold text-gray-800 text-sm">{s.note}</span>{!s.kpi.pass ? <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded">Thấp</span> : <span className="text-[10px] bg-green-100 text-green-700 px-1 rounded">OK</span>}</div><div className="flex gap-4 text-xs mt-1 text-gray-600"><span className={`font-mono ${s.metric1 < 30 ? 'text-red-500 font-bold' : ''}`}>{s.metric1}p</span><span className={`font-mono ${s.metric2 < 100 ? 'text-red-500 font-bold' : ''}`}>{s.metric2}v</span></div></div>
+
+                                    {/* KẾT QUẢ QUÉT ĐƯỢC - DẠNG DỌC THEO TỪNG NGÀY */}
+                                    {scannedGroups.length > 0 && (
+                                        <div className="space-y-3 pt-1 border-t border-stone-200">
+                                            {/* Thanh tổng quan & Thao tác nhanh */}
+                                            <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 flex flex-wrap items-center justify-between gap-2">
+                                                <div>
+                                                    <div className="text-xs font-bold text-stone-900">
+                                                        Kết Quả Quét:{' '}
+                                                        <span className="text-emerald-700 font-bold">
+                                                            {allSelectedScanSessions.length} phiên đã chọn
+                                                        </span>{' '}
+                                                        / {scannedGroups.reduce((acc, g) => acc + g.sessions.length, 0)} phiên ({scannedGroups.length} ngày)
                                                     </div>
-                                                ))}
+                                                    <div className="text-[10px] text-stone-500 mt-0.5">
+                                                        * Mặc định tự động chọn các phiên đạt chuẩn của <strong className="text-emerald-700">ngày gần nhất</strong>.
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-1.5 text-xs">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleSelectAllKPIAllGroups(true)}
+                                                        className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-[11px] rounded-lg transition cursor-pointer flex items-center gap-1"
+                                                    >
+                                                        ✓ Chọn tất cả đạt chuẩn
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleSelectAllKPIAllGroups(false)}
+                                                        className="px-2.5 py-1 bg-stone-200 hover:bg-stone-300 text-stone-700 font-medium text-[11px] rounded-lg transition cursor-pointer"
+                                                    >
+                                                        Bỏ chọn hết
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Danh sách Dọc theo từng ngày */}
+                                            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                                                {scannedGroups.map((grp, grpIdx) => {
+                                                    const totalSessions = grp.sessions.length;
+                                                    const selectedCount = grp.sessions.filter((s) => s.selected).length;
+
+                                                    return (
+                                                        <div
+                                                            key={grp.date || grpIdx}
+                                                            className="border border-stone-200 rounded-xl bg-white overflow-hidden shadow-xs"
+                                                        >
+                                                            {/* Header Ngày: Nền Xanh Đậm (#065f46) */}
+                                                            <div className="bg-[#065f46] text-white px-3.5 py-2 flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs">📅</span>
+                                                                    <span className="text-xs font-bold text-white tracking-wide">
+                                                                        Ngày: {grp.date}
+                                                                    </span>
+                                                                </div>
+                                                                {/* Đếm số phiên rút gọn 1/2, 2/3 */}
+                                                                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-950/70 text-emerald-200 border border-emerald-700/60 font-mono">
+                                                                    {selectedCount}/{totalSessions}
+                                                                </span>
+                                                            </div>
+
+                                                            {/* Danh sách phiên: Đạt chuẩn nền xanh nhạt, Chưa đạt nền đỏ nhạt */}
+                                                            <div className="p-2 space-y-1.5 bg-stone-50/40">
+                                                                {grp.sessions.map((s, sIdx) => {
+                                                                    const isPass = s.kpi.pass;
+                                                                    return (
+                                                                        <div
+                                                                            key={s.id ?? sIdx}
+                                                                            onClick={() => toggleSessionSelect(grpIdx, sIdx)}
+                                                                            className={`p-2.5 rounded-lg border flex items-center justify-between cursor-pointer transition ${
+                                                                                isPass
+                                                                                    ? s.selected
+                                                                                        ? 'bg-emerald-50 border-emerald-400 ring-1 ring-emerald-400/30 shadow-xs'
+                                                                                        : 'bg-emerald-50/50 border-emerald-200/70 opacity-60 hover:opacity-90'
+                                                                                    : s.selected
+                                                                                    ? 'bg-rose-50 border-rose-400 ring-1 ring-rose-400/30 shadow-xs'
+                                                                                    : 'bg-rose-50/50 border-rose-200/70 opacity-60 hover:opacity-90'
+                                                                            }`}
+                                                                        >
+                                                                            <div className="flex items-center gap-2.5">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={s.selected}
+                                                                                    onChange={() => {}}
+                                                                                    className={`w-4 h-4 rounded cursor-pointer ${
+                                                                                        isPass ? 'accent-emerald-700' : 'accent-rose-700'
+                                                                                    }`}
+                                                                                />
+                                                                                <div>
+                                                                                    <div
+                                                                                        className={`font-bold text-xs ${
+                                                                                            isPass ? 'text-emerald-950' : 'text-rose-950'
+                                                                                        }`}
+                                                                                    >
+                                                                                        {s.note}
+                                                                                    </div>
+                                                                                    <div
+                                                                                        className={`text-[11px] mt-0.5 ${
+                                                                                            isPass ? 'text-emerald-800/80' : 'text-rose-800/80'
+                                                                                        }`}
+                                                                                    >
+                                                                                        Thời lượng:{' '}
+                                                                                        <strong className={isPass ? 'text-emerald-950' : 'text-rose-950'}>
+                                                                                            {s.metric1} phút
+                                                                                        </strong>{' '}
+                                                                                        • Lượt xem:{' '}
+                                                                                        <strong className={isPass ? 'text-emerald-950' : 'text-rose-950'}>
+                                                                                            {s.metric2.toLocaleString()}
+                                                                                        </strong>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div>
+                                                                                {isPass ? (
+                                                                                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
+                                                                                        Đạt chuẩn
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <span className="text-[10px] font-bold bg-rose-100 text-rose-800 px-2 py-0.5 rounded-md">
+                                                                                        Chưa đạt
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     )}
                                 </>
                             )}
+
+                            {/* TAB NHẬP LINK VIDEO */}
                             {modalTab === 'link' && (
                                 <div className="space-y-3 animate-in fade-in zoom-in-95">
-                                    <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 uppercase">Đường dẫn video</label><input type="text" placeholder="Dán link video vào đây..." value={videoLink} onChange={handleLinkChange} className="w-full border p-2 rounded text-sm outline-none focus:border-blue-500" /></div>
-                                    <div className="space-y-1"><label className="text-[10px] font-bold text-gray-500 uppercase">Ngày đăng</label><input type="date" value={linkDate} onChange={e => setLinkDate(e.target.value)} className="w-full border p-2 rounded text-sm" /></div>
+                                    <div className="space-y-1">
+                                        <label className="text-[11px] font-bold text-stone-600 uppercase">Đường dẫn video (Reels, TikTok, Shorts)</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Dán link video vào đây..."
+                                            value={videoLink}
+                                            onChange={handleLinkChange}
+                                            className="w-full border border-stone-300 p-2.5 rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[11px] font-bold text-stone-600 uppercase">Ngày đăng</label>
+                                        <input
+                                            type="date"
+                                            value={linkDate}
+                                            onChange={e => setLinkDate(e.target.value)}
+                                            className="w-full border border-stone-300 p-2.5 rounded-xl text-sm outline-none"
+                                        />
+                                    </div>
                                 </div>
                             )}
+
+                            {/* CẢNH BÁO GHI ĐÈ */}
                             {showOverwriteWarning && (
-                                <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg text-sm text-yellow-800 animate-in zoom-in-95">
-                                    <div className="flex items-start gap-2"><AlertTriangle size={18} className="shrink-0 mt-0.5" /><div><p className="font-bold">Cảnh báo!</p><p className="mt-1">Ngày này đã có dữ liệu. Bạn có muốn ghi đè không?</p></div></div>
+                                <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl text-xs text-amber-900 animate-in zoom-in-95">
+                                    <div className="flex items-start gap-2">
+                                        <AlertTriangle size={18} className="shrink-0 mt-0.5 text-amber-600" />
+                                        <div>
+                                            <p className="font-bold">Cảnh báo trùng lặp!</p>
+                                            <p className="mt-0.5">Ngày này bạn đã có báo cáo trong hệ thống. Bạn có muốn ghi đè dữ liệu mới không?</p>
+                                        </div>
+                                    </div>
                                     <div className="flex gap-2 mt-3 justify-end">
                                         <button
+                                            type="button"
                                             onClick={() => setShowOverwriteWarning(false)}
-                                            className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-xs font-bold"
+                                            className="px-3 py-1.5 bg-white border border-stone-300 rounded-lg hover:bg-stone-50 text-xs font-bold text-stone-700 cursor-pointer"
                                             disabled={uploading}
                                         >
                                             Hủy
                                         </button>
-                                        {/* NÚT GHI ĐÈ ĐÃ SỬA: KHÓA + HIỆN LOADING */}
                                         <button
+                                            type="button"
                                             onClick={handleConfirmOverwrite}
                                             disabled={uploading}
-                                            className={`px-3 py-1 text-white rounded text-xs font-bold flex items-center gap-1 ${uploading ? 'bg-gray-400 cursor-not-allowed opacity-70' : 'bg-yellow-500 hover:bg-yellow-600'}`}
+                                            className={`px-3.5 py-1.5 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer ${
+                                                uploading ? 'bg-stone-400 cursor-not-allowed opacity-70' : 'bg-amber-600 hover:bg-amber-700 shadow-xs'
+                                            }`}
                                         >
                                             {uploading && <Loader2 className="animate-spin" size={12} />}
-                                            {uploading ? 'Đang lưu...' : 'Ghi đè'}
+                                            {uploading ? 'Đang lưu...' : 'Xác nhận ghi đè'}
                                         </button>
                                     </div>
                                 </div>
                             )}
                         </div>
+
+                        {/* Footer Nút Hành Động */}
                         {!showOverwriteWarning && (
-                            <div className="p-4 border-t bg-white shrink-0 flex gap-3">
-                                {modalTab === 'scan' && selectedGroup && (
+                            <div className="p-4 border-t border-stone-200 bg-stone-50 shrink-0 flex items-center justify-between gap-3">
+                                {modalTab === 'scan' && (
                                     <>
-                                        <div className="flex-1 text-xs text-gray-500">* KPI: Min 30p & View 100</div>
-                                        <button onClick={handleSaveScan} disabled={uploading || selectedGroup.sessions.filter(s => s.selected).length === 0} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg disabled:opacity-70">{uploading ? <Loader2 className="animate-spin" /> : <CheckCircle size={20} />} {uploading ? 'Đang lưu...' : `LƯU (${selectedGroup.sessions.filter(s => s.selected).length})`}</button>
+                                        <div className="text-[11px] text-stone-500">
+                                            * KPI: Min 30p hoặc View ≥ 100
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsModalOpen(false)}
+                                                className="px-4 py-2.5 border border-stone-300 text-stone-700 font-semibold text-xs rounded-xl hover:bg-stone-100 transition cursor-pointer"
+                                            >
+                                                Hủy
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleSaveScan}
+                                                disabled={uploading || allSelectedScanSessions.length === 0}
+                                                className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-300 text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer disabled:cursor-not-allowed"
+                                            >
+                                                {uploading ? (
+                                                    <>
+                                                        <Loader2 className="animate-spin" size={16} />
+                                                        <span>Đang lưu...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <CheckCircle size={16} />
+                                                        <span>💾 Xác nhận lưu ({allSelectedScanSessions.length} phiên đã chọn)</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
                                     </>
                                 )}
                                 {modalTab === 'link' && (
-                                    <button onClick={handleSaveLink} disabled={uploading || !videoLink} className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg disabled:opacity-70">{uploading ? <Loader2 className="animate-spin" /> : <Save size={20} />} Lưu Báo Cáo Video</button>
+                                    <div className="w-full flex justify-end gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsModalOpen(false)}
+                                            className="px-4 py-2.5 border border-stone-300 text-stone-700 font-semibold text-xs rounded-xl hover:bg-stone-100 transition cursor-pointer"
+                                        >
+                                            Hủy
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleSaveLink}
+                                            disabled={uploading || !videoLink}
+                                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-stone-300 text-white px-6 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer disabled:cursor-not-allowed"
+                                        >
+                                            {uploading ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                                            {uploading ? 'Đang lưu...' : 'Lưu Báo Cáo Video'}
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         )}
