@@ -112,8 +112,8 @@ const LoginScreen = () => {
       {/* --- FORM ĐĂNG NHẬP --- */}
       <div className="bg-black/30 backdrop-blur-xl p-8 rounded-2xl shadow-2xl w-full max-w-md border border-white/20 relative z-30 animate-in fade-in zoom-in duration-700 mx-4 mb-60 md:mb-0">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2 tracking-widest drop-shadow-md">SKODA CRM</h1>
-          <p className="text-[#4ade80] font-medium text-sm tracking-widest uppercase">Hệ Thống Quản Lý Khách Hàng</p>
+          <h1 className="text-3xl font-black mb-2 tracking-widest drop-shadow-md animate-lightwipe uppercase">CRM BÌNH DƯƠNG</h1>
+          <p className="text-[#4ade80] font-medium text-xs tracking-widest uppercase">Hệ Thống Quản Lý Khách Hàng</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
@@ -169,8 +169,10 @@ const LoginScreen = () => {
           <Link to="/forgot-password" className="text-sm text-gray-300 hover:text-[#4ade80] transition underline decoration-transparent hover:decoration-[#4ade80]">
             Quên mật khẩu?
           </Link>
-          {/* Cập nhật năm 2026 */}
-          <div className="mt-4 text-[10px] text-gray-500 uppercase tracking-widest">© 2026 Skoda Dong Nai</div>
+          <div className="mt-4 flex flex-col items-center gap-1">
+            <div className="text-[11px] font-black uppercase tracking-widest animate-lightwipe">© 2026 MG BÌNH DƯƠNG</div>
+            <div className="text-[10px] text-gray-400 font-bold tracking-wide">Liên hệ kỹ thuật : Thạch</div>
+          </div>
         </div>
       </div>
     </div>

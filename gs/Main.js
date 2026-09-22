@@ -43,6 +43,10 @@ function handleRequest(e) {
     if (action === 'getCalendarData') return getCalendarData();
     if (action === 'updateCalendarData') return updateCalendarData(params);
 
+    // --- LEAD REPORT SYNC (File: LeadReportSync.gs) ---
+    if (action === 'syncLeadReport') return syncLeadReport(params);
+    if (action === 'setupDailyTrigger') return responseJSON(setupDailyTrigger());
+
     return responseJSON({ status: 'error', message: 'Unknown action: ' + action });
   } catch (error) {
     return responseJSON({ status: 'error', message: error.toString() });

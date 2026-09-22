@@ -140,7 +140,18 @@ function getCustomers(params) {
 
   const result = filtered.map((r, i) => {
     let td = IDX.TESTDRIVE > -1 ? r[IDX.TESTDRIVE] : '';
-    if (typeof td === 'string' && td.startsWith("'")) td = td.substring(1);
+    if (typeof td === 'string') {
+        if (td.startsWith("'")) td = td.substring(1);
+        if (td.includes('/') && td.split('/').length === 3) {
+            const p = td.split('/');
+            // Check if it's dd/mm/yyyy
+            if (p[0].length === 2 && p[2].length === 4) {
+                td = `${p[2]}-${p[1]}-${p[0]}`;
+            }
+        }
+    } else if (td instanceof Date) {
+        td = Utilities.formatDate(td, "GMT+7", "yyyy-MM-dd");
+    }
     
     return {
       key: i,

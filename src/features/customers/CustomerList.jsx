@@ -2,22 +2,27 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useData } from '../../context/DataProvider';
 import { authService } from '../auth/authService';
 import CustomerFormModal from './CustomerFormModal';
-import { Search, Plus, Loader2, Phone, User, Calendar, MessageSquare, Save, X, GripVertical, Briefcase, Car, PieChart, ShieldCheck, ShieldAlert, MessageCircle, RefreshCw, Star, Users, LayoutList, Table, Copy } from 'lucide-react';
+import { customerService } from './customerService';
+import { Search, Plus, Loader2, Phone, User, Calendar, MessageSquare, Save, X, GripVertical, Briefcase, Car, PieChart, ShieldCheck, ShieldAlert, MessageCircle, RefreshCw, Star, Users, LayoutList, Table, Copy, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // --- COMPONENT CON: CUSTOMER DETAIL PANE ---
-const CustomerDetailPane = ({ customer, config, onSave, loadingSave, onClose }) => {
+const CustomerDetailPane = ({ customer, config, onSave, loadingSave, onClose, onDelete }) => {
     const [formData, setFormData] = useState({});
     const [suggestions, setSuggestions] = useState([]);
     const [roleLevel, setRoleLevel] = useState(1);
     const [isContactMenuOpen, setIsContactMenuOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
         try {
             const user = authService.getCurrentUser();
             if (user) {
                 const role = String(user.role || '').toLowerCase();
+                if (role.includes('admin')) {
+                    setIsAdmin(true);
+                }
                 if (role.includes('admin') || role.includes('giám đốc') || role.includes('quản lý') || role.includes('manager')) setRoleLevel(3);
                 else if (role.includes('trưởng phòng') || role.includes('tpkd')) setRoleLevel(2);
                 else setRoleLevel(1);
@@ -138,9 +143,9 @@ const CustomerDetailPane = ({ customer, config, onSave, loadingSave, onClose }) 
                 <div className="border rounded-lg p-4 border-gray-200">
                     <h4 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2"><User size={14} /> Khách hàng</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1"><label className="text-[10px] text-gray-500 font-bold uppercase">Họ tên (*)</label><input name="customerName" value={formData.customerName || ''} onChange={handleChange} className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-green-500 outline-none" /></div>
-                        <div className="space-y-1"><label className="text-[10px] text-gray-500 font-bold uppercase">SĐT (*)</label><div className="flex items-center gap-1"><input name="phone" value={formData.phone || ''} onChange={handleChange} className="flex-1 w-full p-2 border rounded text-sm font-bold text-gray-800 focus:ring-1 focus:ring-green-500 outline-none min-w-0" placeholder="Chỉ nhập số..." /><button onClick={handleContactClick} className="w-[38px] h-[38px] bg-green-600 hover:bg-green-700 text-white rounded flex items-center justify-center shadow-sm shrink-0 transition active:scale-95"><MessageCircle size={20} /></button></div></div>
-                        <div className="space-y-1 relative col-span-1 sm:col-span-1"><label className="text-[10px] text-gray-500 font-bold uppercase">Phường / Xã</label><div className="relative"><input name="ward" value={formData.ward || ''} onChange={handleChange} className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-green-500 outline-none" autoComplete="off" placeholder="Nhập để tìm..." />{suggestions.length > 0 && (<div className="absolute top-full left-0 w-full bg-white border shadow-xl mt-1 max-h-40 overflow-y-auto rounded z-50">{suggestions.map((loc, idx) => (<div key={idx} onClick={() => handleSelectSuggestion(loc)} className="p-2 hover:bg-green-50 cursor-pointer text-sm border-b last:border-0"><span className="font-bold">{loc.ward}</span> <span className="text-gray-400 text-xs">- {loc.province}</span></div>))}</div>)}</div></div>
+                        <div className="space-y-1"><label className="text-[10px] text-gray-500 font-bold uppercase">Họ tên (*)</label><input name="customerName" value={formData.customerName || ''} onChange={handleChange} className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-red-500 outline-none" /></div>
+                        <div className="space-y-1"><label className="text-[10px] text-gray-500 font-bold uppercase">SĐT (*)</label><div className="flex items-center gap-1"><input name="phone" value={formData.phone || ''} onChange={handleChange} className="flex-1 w-full p-2 border rounded text-sm font-bold text-gray-800 focus:ring-1 focus:ring-red-500 outline-none min-w-0" placeholder="Chỉ nhập số..." /><button onClick={handleContactClick} className="w-[38px] h-[38px] bg-red-600 hover:bg-red-700 text-white rounded flex items-center justify-center shadow-sm shrink-0 transition active:scale-95"><MessageCircle size={20} /></button></div></div>
+                        <div className="space-y-1 relative col-span-1 sm:col-span-1"><label className="text-[10px] text-gray-500 font-bold uppercase">Phường / Xã</label><div className="relative"><input name="ward" value={formData.ward || ''} onChange={handleChange} className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-red-500 outline-none" autoComplete="off" placeholder="Nhập để tìm..." />{suggestions.length > 0 && (<div className="absolute top-full left-0 w-full bg-white border shadow-xl mt-1 max-h-40 overflow-y-auto rounded z-50">{suggestions.map((loc, idx) => (<div key={idx} onClick={() => handleSelectSuggestion(loc)} className="p-2 hover:bg-red-50 cursor-pointer text-sm border-b last:border-0"><span className="font-bold">{loc.ward}</span> <span className="text-gray-400 text-xs">- {loc.province}</span></div>))}</div>)}</div></div>
                         <div className="space-y-1 col-span-1 sm:col-span-1"><label className="text-[10px] text-gray-500 font-bold uppercase">Tỉnh / Thành</label><input name="province" value={formData.province || ''} readOnly className="w-full p-2 border rounded text-sm bg-gray-100 text-gray-500 cursor-not-allowed" /></div>
                     </div>
                 </div>
@@ -194,7 +199,6 @@ const CustomerDetailPane = ({ customer, config, onSave, loadingSave, onClose }) 
                             </div>
                         </div>
                         <div className="space-y-1"><label className="text-[10px] text-gray-500 font-bold uppercase">Dòng xe</label><select name="carModel" value={formData.carModel || ''} onChange={handleChange} className="w-full p-2 border rounded text-sm bg-white outline-none"><option value="">-- Chọn --</option>{config.carModels?.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-                        <div className="space-y-1"><label className="text-[10px] text-gray-500 font-bold uppercase">Phiên bản</label><select name="version" value={formData.version || ''} onChange={handleChange} className="w-full p-2 border rounded text-sm bg-white outline-none"><option value="">-- Chọn --</option>{config.versions?.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                         <div className="space-y-1"><label className="text-[10px] text-gray-500 font-bold uppercase">Nguồn</label><select name="source" value={formData.source || ''} onChange={handleChange} className="w-full p-2 border rounded text-sm bg-white outline-none"><option value="">-- Chọn --</option>{config.sources?.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                         <div className="space-y-1"><label className="text-[10px] text-gray-500 font-bold uppercase">Kênh</label><select name="channel" value={formData.channel || ''} onChange={handleChange} className="w-full p-2 border rounded text-sm bg-white outline-none"><option value="">-- Chọn --</option>{config.channels?.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                     </div>
@@ -225,8 +229,11 @@ const CustomerDetailPane = ({ customer, config, onSave, loadingSave, onClose }) 
                 </div>
             </div>
 
-            <div className="p-4 border-t bg-white shrink-0 pb-safe">
-                <button onClick={handleSubmit} disabled={loadingSave || isSaving} className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold shadow-lg flex items-center justify-center gap-2 text-sm disabled:opacity-50 active:scale-95 transition">{(loadingSave || isSaving) ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />} LƯU HỒ SƠ KHÁCH HÀNG</button>
+            <div className="p-4 border-t bg-white shrink-0 pb-safe flex gap-3">
+                {isAdmin && (
+                    <button type="button" onClick={() => onDelete(formData)} className="bg-red-100 hover:bg-red-200 text-red-600 px-4 py-3 rounded-lg font-bold shadow-sm flex items-center justify-center gap-2 text-sm transition active:scale-95">Xóa khách</button>
+                )}
+                <button type="button" onClick={handleSubmit} disabled={loadingSave || isSaving} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold shadow-lg flex items-center justify-center gap-2 text-sm disabled:opacity-50 active:scale-95 transition">{(loadingSave || isSaving) ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />} LƯU HỒ SƠ KHÁCH HÀNG</button>
             </div>
 
             {isContactMenuOpen && (
@@ -252,11 +259,12 @@ const CustomerList = () => {
     const [dateRange, setDateRange] = useState({ start: new Date().toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] });
 
     // STATE VIEW MODE: 'list' (Thẻ) | 'table' (Bảng)
-    const [viewMode, setViewMode] = useState('list');
+    const [viewMode, setViewMode] = useState(() => window.innerWidth < 1024 ? 'list' : 'table');
+    const [statsSort, setStatsSort] = useState({ column: 'saleName', direction: 'asc' });
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
-    const [filters, setFilters] = useState({ carModel: '', source: '', department: '', status: '', saleName: '', leadRating: '' });
+    const [filters, setFilters] = useState({ carModel: '', source: '', excludeSource: '', channel: '', department: '', status: '', saleName: '', leadRating: '' });
 
     const sidebarRef = useRef(null);
     const isResizing = useRef(false);
@@ -327,13 +335,16 @@ const CustomerList = () => {
                     String(c.department || '').toLowerCase().includes(keyword) ||
                     String(ratingVal).toLowerCase().includes(keyword) ||
                     String(c.carModel || '').toLowerCase().includes(keyword) ||
-                    String(c.source || '').toLowerCase().includes(keyword)
+                    String(c.source || '').toLowerCase().includes(keyword) ||
+                    String(c.channel || '').toLowerCase().includes(keyword)
                 ));
             });
         }
 
         if (filters.carModel) res = res.filter(c => c.carModel === filters.carModel);
         if (filters.source) res = res.filter(c => c.source === filters.source);
+        if (filters.excludeSource) res = res.filter(c => c.source !== filters.excludeSource);
+        if (filters.channel) res = res.filter(c => c.channel === filters.channel);
         if (filters.department) res = res.filter(c => c.department === filters.department);
         if (filters.saleName) res = res.filter(c => c.saleName === filters.saleName);
         if (filters.leadRating) {
@@ -364,6 +375,12 @@ const CustomerList = () => {
         const names = (customers || []).map(c => c.saleName).filter(Boolean);
         return [...new Set(names)].sort();
     }, [customers]);
+
+    const distinctChannels = useMemo(() => {
+        const fromCust = (customers || []).map(c => c.channel).filter(Boolean);
+        const fromConfig = config?.channels || [];
+        return [...new Set([...fromConfig, ...fromCust])].sort();
+    }, [customers, config?.channels]);
 
     const sourceStats = useMemo(() => {
         const stats = {};
@@ -408,6 +425,27 @@ const CustomerList = () => {
     const handleCreateCustomer = async () => {
         // Modal sẽ tự đóng, ở đây ta chỉ cần fetch lại
         await fetchCustomers(true, dateRange.start, dateRange.end);
+    };
+
+    const handleDeleteCustomer = async (cust) => {
+        if (!cust) return;
+        const confirmMsg = `CẢNH BÁO NGUY HIỂM:\nBạn có chắc chắn muốn XÓA VĨNH VIỄN khách hàng: ${cust.customerName} (${cust.phone})?\n\nHành động này sẽ xóa sạch thông tin khách hàng ở tất cả các bảng dữ liệu liên quan và KHÔNG THỂ HOÀN TÁC!`;
+        if (!window.confirm(confirmMsg)) return;
+
+        const toastId = toast.loading("Đang xóa khách hàng khỏi hệ thống...");
+        try {
+            const res = await customerService.deleteCustomer(cust.phone);
+            if (res.status === 'success') {
+                toast.success("Đã xóa khách hàng thành công!", { id: toastId });
+                setSelectedCustomer(null);
+                await fetchCustomers(false, dateRange.start, dateRange.end);
+            } else {
+                throw new Error(res.message || "Lỗi xóa");
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error("Xóa thất bại: " + e.message, { id: toastId });
+        }
     };
 
     const handleRefresh = async () => {
@@ -469,17 +507,155 @@ const CustomerList = () => {
             .catch(() => toast.error('Copy thất bại!'));
     };
 
+    // --- TÍNH TOÁN THỐNG KÊ DOANH SỐ THEO DÒNG XE ---
+    const employeeStats = useMemo(() => {
+        const statsMap = {};
+        
+        filteredCustomers.forEach(c => {
+            const sale = String(c.saleName || 'Không rõ').trim();
+            const dept = String(c.department || 'Không rõ').trim();
+            const car = String(c.carModel || 'Khác').trim();
+            
+            const key = `${sale}:::${dept}`;
+            if (!statsMap[key]) {
+                statsMap[key] = {
+                    saleName: sale,
+                    department: dept,
+                    cars: {},
+                    total: 0
+                };
+            }
+            
+            statsMap[key].cars[car] = (statsMap[key].cars[car] || 0) + 1;
+            statsMap[key].total += 1;
+        });
+        
+        return Object.values(statsMap);
+    }, [filteredCustomers]);
+
+    const carModels = useMemo(() => {
+        const baseModels = config.carModels || ['MG5', 'MG ZS', 'MG HS', 'MG RX5', 'MG7', 'MG Cyberster'];
+        
+        // Tính tổng lượt báo cáo cho từng dòng xe
+        const modelCounts = {};
+        baseModels.forEach(m => {
+            modelCounts[m] = 0;
+        });
+        
+        filteredCustomers.forEach(c => {
+            const car = String(c.carModel || 'Khác').trim();
+            if (modelCounts[car] !== undefined) {
+                modelCounts[car] += 1;
+            } else {
+                const matched = baseModels.find(bm => bm.toLowerCase() === car.toLowerCase());
+                if (matched) {
+                    modelCounts[matched] += 1;
+                }
+            }
+        });
+        
+        // Sắp xếp: dòng xe có số lượng > 0 xếp trước (giảm dần), dòng xe có số lượng = 0 đưa về sau
+        const sortedModels = [...baseModels].sort((a, b) => {
+            const countA = modelCounts[a] || 0;
+            const countB = modelCounts[b] || 0;
+            
+            if (countA > 0 && countB > 0) {
+                return countB - countA;
+            }
+            if (countA > 0 && countB === 0) {
+                return -1;
+            }
+            if (countA === 0 && countB > 0) {
+                return 1;
+            }
+            return 0;
+        });
+        
+        return sortedModels;
+    }, [config.carModels, filteredCustomers]);
+
+    const sortedStats = useMemo(() => {
+        const list = [...employeeStats];
+        const { column, direction } = statsSort;
+        
+        list.sort((a, b) => {
+            let valA, valB;
+            
+            if (column === 'saleName' || column === 'department') {
+                valA = a[column];
+                valB = b[column];
+                return direction === 'asc' 
+                    ? valA.localeCompare(valB, 'vi', { sensitivity: 'base' })
+                    : valB.localeCompare(valA, 'vi', { sensitivity: 'base' });
+            } else if (column === 'total') {
+                valA = a.total;
+                valB = b.total;
+                return direction === 'asc' ? valA - valB : valB - valA;
+            } else {
+                valA = a.cars[column] || 0;
+                valB = b.cars[column] || 0;
+                return direction === 'asc' ? valA - valB : valB - valA;
+            }
+        });
+        
+        return list;
+    }, [employeeStats, statsSort]);
+
+    const columnTotals = useMemo(() => {
+        const totals = {
+            cars: {},
+            grandTotal: 0
+        };
+        
+        employeeStats.forEach(row => {
+            carModels.forEach(model => {
+                const count = row.cars[model] || 0;
+                totals.cars[model] = (totals.cars[model] || 0) + count;
+            });
+            totals.grandTotal += row.total;
+        });
+        
+        return totals;
+    }, [employeeStats, carModels]);
+
+    const handleStatsSort = (colName) => {
+        setStatsSort(prev => {
+            if (prev.column === colName) {
+                return { column: colName, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+            }
+            return { column: colName, direction: 'asc' };
+        });
+    };
+
+    const renderSortableHeader = (columnKey, label) => {
+        const isSorted = statsSort.column === columnKey;
+        return (
+            <th 
+                onClick={() => handleStatsSort(columnKey)}
+                className="p-3 border-r cursor-pointer hover:bg-gray-200 select-none transition-colors text-gray-700 font-bold"
+            >
+                <div className="flex items-center justify-between gap-1">
+                    <span>{label}</span>
+                    <span className="text-[10px] text-gray-400">
+                        {isSorted ? (statsSort.direction === 'asc' ? '▲' : '▼') : '↕'}
+                    </span>
+                </div>
+            </th>
+        );
+    };
+
     // --- RENDER PHẦN HEADER DÙNG CHUNG ---
     const renderHeaderControls = (fullWidth = false) => (
         <div className={`p-3 border-b space-y-2 bg-white z-10 shadow-sm border-t-0 ${fullWidth ? 'rounded-t-lg' : ''}`}>
             <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                     <h2 className="font-bold text-gray-800 flex items-center gap-2">DS KHÁCH HÀNG <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">{filteredCustomers.length}</span></h2>
-
+ 
                     {/* NÚT CHUYỂN ĐỔI CHẾ ĐỘ XEM */}
                     <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200 shadow-sm">
                         <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${viewMode === 'list' ? 'bg-white text-blue-600 shadow' : 'text-gray-400 hover:text-gray-600'}`} title="Chế độ Thẻ (List)"><LayoutList size={14} /></button>
                         <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${viewMode === 'table' ? 'bg-white text-blue-600 shadow' : 'text-gray-400 hover:text-gray-600'}`} title="Chế độ Bảng (Table)"><Table size={14} /></button>
+                        <button onClick={() => setViewMode('stats')} className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${viewMode === 'stats' ? 'bg-white text-blue-600 shadow' : 'text-gray-400 hover:text-gray-600'}`} title="Báo cáo Thống kê dòng xe"><BarChart3 size={14} /></button>
                     </div>
                 </div>
 
@@ -509,6 +685,8 @@ const CustomerList = () => {
             <div className="relative"><Search className="absolute left-2 top-2 text-gray-400 w-4 h-4" /><input placeholder="Tìm: Tên, SĐT, Note, NV, Lead Rating, Phòng ban..." className="pl-8 border rounded text-sm w-full py-1.5 outline-none bg-gray-50 focus:bg-white focus:ring-1 focus:ring-blue-400" onChange={e => setSearchTerm(e.target.value)} /></div>
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar scroll-smooth whitespace-nowrap">
                 <select className="border rounded px-2 py-1 text-xs bg-white outline-none min-w-[90px]" value={filters.source} onChange={e => setFilters({ ...filters, source: e.target.value })}><option value="">--Nguồn--</option>{config.sources?.map((s, i) => <option key={i} value={s}>{s}</option>)}</select>
+                <select className="border rounded px-2 py-1 text-xs bg-white outline-none min-w-[90px]" value={filters.excludeSource} onChange={e => setFilters({ ...filters, excludeSource: e.target.value })}><option value="">--Loại trừ Nguồn--</option>{config.sources?.map((s, i) => <option key={i} value={s}>{s}</option>)}</select>
+                <select className="border rounded px-2 py-1 text-xs bg-white outline-none min-w-[90px]" value={filters.channel} onChange={e => setFilters({ ...filters, channel: e.target.value })}><option value="">--Kênh--</option>{distinctChannels.map((ch, i) => <option key={i} value={ch}>{ch}</option>)}</select>
                 <select className="border rounded px-2 py-1 text-xs bg-white outline-none min-w-[80px]" value={filters.carModel} onChange={e => setFilters({ ...filters, carModel: e.target.value })}><option value="">--Xe--</option>{config.carModels?.map((c, i) => <option key={c} value={c}>{c}</option>)}</select>
                 <select className="border rounded px-2 py-1 text-xs bg-white outline-none min-w-[100px]" value={filters.department} onChange={e => setFilters({ ...filters, department: e.target.value })}><option value="">--Phòng ban--</option>{distinctDepartments.map((d, i) => <option key={i} value={d}>{d}</option>)}</select>
                 <select className="border rounded px-2 py-1 text-xs bg-white outline-none min-w-[100px]" value={filters.saleName} onChange={e => setFilters({ ...filters, saleName: e.target.value })}><option value="">--Tên NV--</option>{distinctSaleNames.map((n, i) => <option key={i} value={n}>{n}</option>)}</select>
@@ -580,7 +758,7 @@ const CustomerList = () => {
                     <div className={`fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 md:static md:bg-transparent md:p-0 md:flex-1 md:h-full md:flex-col md:items-stretch ${selectedCustomer ? 'flex' : 'hidden md:flex'}`}>
                         <div className={`bg-white w-full flex flex-col relative rounded-xl shadow-2xl overflow-hidden h-[85vh] md:max-h-full md:h-full md:rounded-none md:shadow-none`}>
                             <button onClick={() => setSelectedCustomer(null)} className="md:hidden absolute top-3 right-3 z-50 p-2 bg-gray-100 hover:bg-red-100 text-gray-500 hover:text-red-500 rounded-full transition shadow-sm"><X size={20} /></button>
-                            <CustomerDetailPane customer={selectedCustomer} config={config} onSave={handleSaveChanges} loadingSave={false} onClose={() => setSelectedCustomer(null)} />
+                            <CustomerDetailPane customer={selectedCustomer} config={config} onSave={handleSaveChanges} loadingSave={false} onClose={() => setSelectedCustomer(null)} onDelete={handleDeleteCustomer} />
                         </div>
                     </div>
                 </>
@@ -662,10 +840,93 @@ const CustomerList = () => {
                                     onSave={handleSaveChanges}
                                     loadingSave={false}
                                     onClose={() => setSelectedCustomer(null)}
+                                    onDelete={handleDeleteCustomer}
                                 />
                             </div>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* ==================== VIEW MODE: STATS (Thống Kê Dòng Xe) ==================== */}
+            {viewMode === 'stats' && (
+                <div className="flex flex-col h-full w-full bg-white relative">
+                    {renderHeaderControls(true)}
+                    <div className="flex-1 overflow-auto bg-gray-50 p-3">
+                        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden h-full flex flex-col">
+                            <div className="overflow-x-auto flex-1 pb-4">
+                                <table className="w-full text-xs text-left border-collapse min-w-max">
+                                    <thead className="bg-gray-100 text-gray-700 font-bold sticky top-0 z-10 shadow-sm border-b border-gray-200">
+                                        <tr>
+                                            <th className="p-3 border-r text-center w-12 text-gray-700">STT</th>
+                                            {renderSortableHeader('saleName', 'TÊN NHÂN VIÊN')}
+                                            {renderSortableHeader('department', 'PHÒNG BAN')}
+                                            {carModels.map((model) => (
+                                                <React.Fragment key={model}>
+                                                    {renderSortableHeader(model, model)}
+                                                </React.Fragment>
+                                            ))}
+                                            {renderSortableHeader('total', 'TỔNG CỘNG')}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white">
+                                        {loadingCustomers ? (
+                                            <tr>
+                                                <td colSpan={carModels.length + 4} className="p-10 text-center">
+                                                    <Loader2 className="animate-spin inline text-red-600" /> Đang tải dữ liệu...
+                                                </td>
+                                            </tr>
+                                        ) : sortedStats.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={carModels.length + 4} className="p-10 text-center text-gray-500 italic">
+                                                    Không tìm thấy dữ liệu báo cáo trong khoảng thời gian này.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            sortedStats.map((row, i) => {
+                                                return (
+                                                    <tr key={i} className="border-b even:bg-gray-50 odd:bg-white hover:bg-red-50/20 transition-colors">
+                                                        <td className="p-3 border-r text-center text-gray-500">{i + 1}</td>
+                                                        <td className="p-3 border-r font-bold text-gray-800">{row.saleName}</td>
+                                                        <td className="p-3 border-r text-gray-600">{row.department}</td>
+                                                        {carModels.map((model) => {
+                                                            const count = row.cars[model] || 0;
+                                                            return (
+                                                                <td key={model} className={`p-3 border-r text-center font-mono ${count > 0 ? 'font-bold text-red-600' : 'text-gray-300'}`}>
+                                                                    {count > 0 ? count : '-'}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                        <td className="p-3 text-center font-bold text-gray-800 bg-gray-50 font-mono">
+                                                            {row.total}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                    <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300 sticky bottom-0 z-10 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]">
+                                        <tr className="text-gray-800">
+                                            <td className="p-3 border-r text-center"></td>
+                                            <td className="p-3 border-r font-bold text-sm uppercase">TỔNG CỘNG</td>
+                                            <td className="p-3 border-r"></td>
+                                            {carModels.map((model) => {
+                                                const totalCount = columnTotals.cars[model] || 0;
+                                                return (
+                                                    <td key={model} className="p-3 border-r text-center font-mono text-sm text-red-700 font-black">
+                                                        {totalCount > 0 ? totalCount : '-'}
+                                                    </td>
+                                                );
+                                            })}
+                                            <td className="p-3 text-center text-sm font-black bg-gray-200 text-red-800 font-mono">
+                                                {columnTotals.grandTotal}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 

@@ -12,7 +12,7 @@ const Lantern = () => {
         <div className="relative w-20 h-24 bg-red-600 rounded-lg shadow-lg flex items-center justify-center overflow-hidden animate-pulse">
             {/* Chữ Phúc/Lộc hoặc Logo Skoda mờ */}
             <div className="w-16 h-20 border-2 border-yellow-400 rounded flex items-center justify-center">
-                <span className="text-yellow-400 font-bold text-2xl">Skoda</span>
+                <span className="text-yellow-400 font-bold text-2xl">MG</span>
             </div>
             {/* Hiệu ứng bóng sáng */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>

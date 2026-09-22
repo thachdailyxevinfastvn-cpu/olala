@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Loader2, RefreshCw, Briefcase, FileText, Gift } from 'lucide-react';
+import { Calendar as CalendarIcon, Loader2, RefreshCw, Briefcase, FileText, Gift, Info } from 'lucide-react';
 import { calendarService } from './calendarService';
 import toast from 'react-hot-toast';
 import { authService } from '../auth/authService';
@@ -153,7 +153,7 @@ const CalendarPage = () => {
   return (
     <div className="h-[calc(100vh-80px)] flex flex-col bg-gray-100 overflow-hidden rounded-lg border border-gray-200">
       <div className="p-4 border-b bg-white flex justify-between items-center shrink-0">
-        <h2 className="font-bold gap-2 text-xl text-green-800 flex items-center">
+        <h2 className="font-bold gap-2 text-xl text-red-800 flex items-center">
             <CalendarIcon size={24} /> Lịch Trực
         </h2>
         
@@ -171,8 +171,21 @@ const CalendarPage = () => {
       </div>
 
       <div className="flex-1 overflow-auto p-4 bg-gray-50">
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-900 text-sm shadow-sm">
+            <h3 className="font-bold text-base mb-2 flex items-center gap-2 text-amber-800">
+                <Info size={18} /> QUY ĐỊNH GIỜ TRỰC
+            </h3>
+            <p className="font-bold mb-2">Nhân viên trực từ thứ hai đến thứ bảy: 07h30 - 18h00; Chủ nhật: 8h00 - 17h00</p>
+            <ul className="list-disc pl-5 space-y-1 font-medium">
+                <li>Showroom, bàn ghế, xe trưng bày phải luôn sạch sẽ, gọn gàng.</li>
+                <li>Catalogue, bảng báo giá, các file liên quan luôn luôn chuẩn bị đầy đủ.</li>
+                <li>Báo cáo đầy đủ thông tin khách hàng đã tiếp tại Showroom theo ngày.</li>
+                <li>Trong ca trực nếu vắng mặt phải có lý do và báo cáo đầy đủ đến Trưởng phòng kinh doanh hoặc Giám đốc.</li>
+                <li>Nhân viên trực thực hiện đúng tiêu chuẩn đồng phục theo quy định công ty, vi phạm cắt lịch trực ngay tại thời điểm vi phạm.</li>
+            </ul>
+        </div>
         {loading ? (
-            <div className="h-full flex items-center justify-center text-green-600">
+            <div className="h-full flex items-center justify-center text-red-600">
                 <Loader2 size={40} className="animate-spin" />
             </div>
         ) : (
@@ -190,12 +203,12 @@ const CalendarPage = () => {
                               key={`mb-${idx}`} 
                               onClick={() => handleDayClick(dateObj, events[0])}
                               className={`flex gap-3 p-3 rounded-xl border shadow-sm transition
-                                ${isCurDay ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'}
+                                ${isCurDay ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'}
                                 ${canEdit ? 'cursor-pointer active:scale-[0.98]' : ''}
                               `}
                             >
                                 <div className={`flex flex-col items-center justify-center shrink-0 w-14 rounded-lg p-2
-                                    ${isCurDay ? 'bg-green-600 text-white shadow-md' : 'bg-gray-50 text-gray-500 border'}
+                                    ${isCurDay ? 'bg-red-600 text-white shadow-md' : 'bg-gray-50 text-gray-500 border'}
                                 `}>
                                     <span className="text-[10px] font-bold uppercase mb-0.5">{dayOfWeek}</span>
                                     <span className="text-xl font-black leading-tight">{dateObj.getDate()}</span>
@@ -263,7 +276,7 @@ const CalendarPage = () => {
                               key={idx} 
                               onClick={() => handleDayClick(dateObj, events[0])}
                               className={`border-r border-b min-h-[120px] p-2 hover:bg-gray-50 transition border-transparent hover:border-gray-200 
-                                ${!dateObj ? 'bg-gray-50/50' : isCurDay ? 'bg-green-50/30' : 'bg-white'}
+                                ${!dateObj ? 'bg-gray-50/50' : isCurDay ? 'bg-red-50/30' : 'bg-white'}
                                 ${canEdit && dateObj ? 'cursor-pointer hover:shadow-inner' : ''}
                               `}
                             >
@@ -277,8 +290,8 @@ const CalendarPage = () => {
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className={`text-right text-sm font-bold shrink-0 ${isCurDay ? 'text-green-600' : holidayName ? 'text-red-500' : 'text-gray-400'}`}>
-                                                <span className={isCurDay ? 'bg-green-100 px-2 py-0.5 rounded-full' : ''}>
+                                            <div className={`text-right text-sm font-bold shrink-0 ${isCurDay ? 'text-red-600' : holidayName ? 'text-red-500' : 'text-gray-400'}`}>
+                                                <span className={isCurDay ? 'bg-red-100 px-2 py-0.5 rounded-full' : ''}>
                                                     {dateObj.getDate()}
                                                 </span>
                                             </div>
@@ -320,9 +333,9 @@ const CalendarPage = () => {
       {editModal.open && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden">
-            <div className="p-4 border-b bg-green-50">
-              <h3 className="font-bold text-green-800">Cập nhật Lịch Trực</h3>
-              <p className="text-sm text-green-600 mt-1">Ngày: {editModal.dateObj?.getDate()}/{editModal.dateObj?.getMonth() + 1}/{editModal.dateObj?.getFullYear()}</p>
+            <div className="p-4 border-b bg-red-50">
+              <h3 className="font-bold text-red-800">Cập nhật Lịch Trực</h3>
+              <p className="text-sm text-red-600 mt-1">Ngày: {editModal.dateObj?.getDate()}/{editModal.dateObj?.getMonth() + 1}/{editModal.dateObj?.getFullYear()}</p>
             </div>
             <div className="p-4 space-y-4">
               <div>
@@ -331,7 +344,7 @@ const CalendarPage = () => {
                   type="text" 
                   value={editModal.content} 
                   onChange={e => setEditModal({...editModal, content: e.target.value})}
-                  className="w-full border p-2 rounded outline-none focus:border-green-500 text-sm"
+                  className="w-full border p-2 rounded outline-none focus:border-red-500 text-sm"
                   placeholder="VD: Nhóm A..."
                 />
               </div>
@@ -341,7 +354,7 @@ const CalendarPage = () => {
                   type="text" 
                   value={editModal.pkd} 
                   onChange={e => setEditModal({...editModal, pkd: e.target.value})}
-                  className="w-full border p-2 rounded outline-none focus:border-green-500 text-sm"
+                  className="w-full border p-2 rounded outline-none focus:border-red-500 text-sm"
                   placeholder="VD: PKD-1"
                 />
               </div>
@@ -354,7 +367,7 @@ const CalendarPage = () => {
               <button 
                 onClick={handleSaveModal}
                 disabled={saving}
-                className="px-4 py-2 text-sm bg-green-600 text-white rounded font-bold hover:bg-green-700 flex items-center gap-2"
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded font-bold hover:bg-red-700 flex items-center gap-2"
               >
                 {saving && <Loader2 size={14} className="animate-spin" />} Lưu lại
               </button>

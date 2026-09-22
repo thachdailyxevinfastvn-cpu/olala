@@ -1,7 +1,7 @@
 // =======================================================
 // 1. CẤU HÌNH & HẰNG SỐ
 // =======================================================
-const ID_FILE_DATA = "1L3wio9UPmEBkWsx3HxowyVr8gkJGivR2eU3QE-orP9o";
+const ID_FILE_DATA = "1ldrCJ3RT-ScXAyW4Xr6OAsXmEdWabfKn8uPiKuE3ZHU";
 const ID_FILE_NHAN_SU = "1VvFRZ83Q1fIgcWWr7J16kc1JKw_4wLnbwKiaNxEwbLo";
 
 const SHEET_CRM = "KHTN";

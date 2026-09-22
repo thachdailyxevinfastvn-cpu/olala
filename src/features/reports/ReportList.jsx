@@ -2,11 +2,13 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useData } from '../../context/DataProvider';
 import { reportService } from './reportService';
 import { authService } from '../auth/authService';
-import { Plus, Loader2, Image as ImageIcon, CheckCircle, Video, Eye, Calendar, X, Sparkles, AlertCircle, Trophy, ChevronDown, ChevronUp, User, LayoutList, Crown, ArrowLeft, AlertTriangle, Link as LinkIcon, Save, Zap, Gift, RefreshCw } from 'lucide-react';
+import { Plus, Loader2, Image as ImageIcon, CheckCircle, Video, Eye, Calendar, X, Sparkles, AlertCircle, Trophy, ChevronDown, ChevronUp, User, LayoutList, Crown, ArrowLeft, AlertTriangle, Link as LinkIcon, Save, Zap, Gift, RefreshCw, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ReportList = () => {
     const { reports, staffList, loadingReports, fetchReports, saveReportOptimistic } = useData();
+    const currentUser = authService.getCurrentUser();
+    const isAdmin = String(currentUser?.role || '').toLowerCase() === 'admin';
 
     // --- LOGIC NGÀY THÁNG ---
     const getMonthRange = () => {
@@ -28,12 +30,14 @@ const ReportList = () => {
     const [endDate, setEndDate] = useState(monthRange.end);
     const [sortConfig, setSortConfig] = useState({ key: 'totalViews', direction: 'desc' });
     const [expandedStaff, setExpandedStaff] = useState(null);
+    const [showInactiveStaff, setShowInactiveStaff] = useState(false);
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalTab, setModalTab] = useState('scan');
     const [viewImage, setViewImage] = useState(null);
     const [analyzing, setAnalyzing] = useState(false);
+    const [scanProgress, setScanProgress] = useState(null);
     const [uploading, setUploading] = useState(false);
 
     // FIX LỖI NHẢY 3 DÒNG: Dùng Ref để khóa submit
@@ -112,12 +116,22 @@ const ReportList = () => {
 
         const filteredReports = reports.filter(r => {
             const rDate = r.reportDate ? new Date(r.reportDate) : new Date(r.timestamp);
-            return rDate >= start && rDate <= end;
+            if (rDate < start || rDate > end) return false;
+
+            if (!showInactiveStaff) {
+                const key = normalizeName(r.staffName);
+                const staffUser = staffList.find(s => normalizeName(s.name) === key);
+                if (staffUser && staffUser.active === false) {
+                    return false;
+                }
+            }
+            return true;
         });
 
         const statsMap = {};
 
-        staffList.forEach(s => {
+        const activeStaffList = showInactiveStaff ? staffList : staffList.filter(s => s.active !== false);
+        activeStaffList.forEach(s => {
             const key = normalizeName(s.name);
             statsMap[key] = {
                 name: s.name,
@@ -130,7 +144,13 @@ const ReportList = () => {
             const rawName = r.staffName;
             if (!rawName) return;
             const key = normalizeName(rawName);
-            if (!statsMap[key]) statsMap[key] = { name: rawName, department: 'Khác', totalVideos: 0, totalLives: 0, totalMinutes: 0, totalViews: 0, reports: [] };
+            if (!statsMap[key]) {
+                const staffUser = staffList.find(s => normalizeName(s.name) === key);
+                if (staffUser && staffUser.active === false && !showInactiveStaff) {
+                    return; // Skip reports for inactive staff if toggle is off
+                }
+                statsMap[key] = { name: rawName, department: 'Khác', totalVideos: 0, totalLives: 0, totalMinutes: 0, totalViews: 0, reports: [] };
+            }
 
             const metrics = statsMap[key];
             metrics.reports.push(r);
@@ -162,6 +182,32 @@ const ReportList = () => {
         setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc' }));
     };
 
+    const handleDeleteReport = async (reportId, e) => {
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+        if (!isAdmin) {
+            toast.error("Chỉ có tài khoản Admin mới có quyền xóa báo cáo!");
+            return;
+        }
+        if (!window.confirm("Bạn có chắc chắn muốn xóa vĩnh viễn báo cáo này không?")) return;
+
+        const toastId = toast.loading("Đang xóa báo cáo...");
+        try {
+            const res = await reportService.deleteReport(reportId);
+            if (res.status === 'success') {
+                toast.success("Đã xóa báo cáo thành công!", { id: toastId });
+                fetchReports(true);
+            } else {
+                throw new Error(res.message);
+            }
+        } catch (error) {
+            console.error("Lỗi xóa báo cáo:", error);
+            toast.error("Xóa báo cáo thất bại: " + error.message, { id: toastId });
+        }
+    };
+
     const checkKPI = (min, view) => {
         const m = Number(min); const v = Number(view);
         if (m >= 30 && v >= 100) return { pass: true, msg: 'Đạt' };
@@ -171,12 +217,18 @@ const ReportList = () => {
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (file) {
-            setSelectedFile(file); setPreviewUrl(URL.createObjectURL(file));
-            setScannedGroups([]); setSelectedGroup(null);
+            setSelectedFile(file);
+            setPreviewUrl(URL.createObjectURL(file));
+            setScannedGroups([]);
+            setSelectedGroup(null);
             setAnalyzing(true);
-            toast("AI đang phân tích...", { icon: '🤖' });
+            setScanProgress({ step: 'compressing', message: '🗜️ Đang nén tối ưu ảnh...' });
+
             try {
-                const aiData = await reportService.analyzeImageWithAI(file);
+                const aiData = await reportService.analyzeImageWithAI(file, (p) => {
+                    setScanProgress(p);
+                });
+
                 if (Array.isArray(aiData) && aiData.length > 0) {
                     const groups = aiData.map(grp => ({
                         date: grp.date,
@@ -202,7 +254,12 @@ const ReportList = () => {
                 } else {
                     toast.error("Không đọc được số liệu. Vui lòng thử lại!");
                 }
-            } catch (err) { console.error("UI Error:", err); toast.error("Lỗi xử lý ảnh."); } finally { setAnalyzing(false); }
+            } catch (err) {
+                console.error("UI Error:", err);
+                toast.error("Lỗi xử lý ảnh: " + (err.message || 'Thử lại'));
+            } finally {
+                setAnalyzing(false);
+            }
         }
     };
 
@@ -348,40 +405,32 @@ const ReportList = () => {
     return (
         <div className="h-[calc(100vh-80px)] flex flex-col bg-gray-50 relative overflow-hidden">
 
-            {/* FLOATING BANNER */}
-            <div className="fixed top-[85px] left-1/2 -translate-x-1/2 z-40 pointer-events-none w-full max-w-sm md:max-w-md">
-                <div className="bg-red-600/90 text-white backdrop-blur-sm rounded-full py-1 px-4 shadow-lg border border-red-400/50 flex items-center justify-center gap-2 animate-in slide-in-from-top-2 duration-700">
-                    <Gift className="text-yellow-300 fill-yellow-300 animate-bounce shrink-0" size={14} />
-                    <div className="overflow-hidden w-full">
-                        <div className="whitespace-nowrap animate-marquee-text text-xs font-bold uppercase tracking-wider">
-                            <span>Thi đua lụm 2 củ của Sếp Phúc ăn Tết nào mọi người !! &nbsp;&nbsp;&nbsp;&nbsp;</span>
-                            <span>Thi đua lụm 2 củ của Sếp Phúc ăn Tết nào mọi người !! &nbsp;&nbsp;&nbsp;&nbsp;</span>
-                        </div>
-                    </div>
-                    <Zap className="text-yellow-200 fill-yellow-200 animate-pulse shrink-0" size={14} />
-                </div>
-                <style>{`
-              .animate-marquee-text {
-                  display: inline-block;
-                  animation: marquee-text 15s linear infinite;
-              }
-              @keyframes marquee-text {
-                  0% { transform: translateX(0); }
-                  100% { transform: translateX(-50%); }
-              }
-          `}</style>
-            </div>
-
             {/* HEADER */}
             <div className="p-4 bg-white shadow-sm border-b shrink-0 space-y-3 z-10 pt-8 md:pt-4">
-                <div className="flex flex-col md:flex-row justify-between items-end md:items-center gap-4">
-                    <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-lg border">
-                        <div className="flex flex-col"><span className="text-[10px] text-gray-500 font-bold px-1">TỪ NGÀY</span><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-sm font-bold text-gray-800 outline-none px-1" /></div>
-                        <div className="h-8 w-[1px] bg-gray-300"></div>
-                        <div className="flex flex-col"><span className="text-[10px] text-gray-500 font-bold px-1">ĐẾN NGÀY</span><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-sm font-bold text-gray-800 outline-none px-1" /></div>
-                        <button onClick={handleRefresh} className="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 shadow-sm ml-1"><Calendar size={18} /></button>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-lg border">
+                            <div className="flex flex-col"><span className="text-[10px] text-gray-500 font-bold px-1">TỪ NGÀY</span><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-sm font-bold text-gray-800 outline-none px-1" /></div>
+                            <div className="h-8 w-[1px] bg-gray-300"></div>
+                            <div className="flex flex-col"><span className="text-[10px] text-gray-500 font-bold px-1">ĐẾN NGÀY</span><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-sm font-bold text-gray-800 outline-none px-1" /></div>
+                            <button onClick={handleRefresh} className="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 shadow-sm ml-1"><Calendar size={18} /></button>
+                        </div>
+                        {isAdmin && (
+                            <div className="flex items-center gap-2 bg-stone-100 p-2.5 rounded-lg border text-xs font-bold text-stone-700 shadow-sm">
+                                <input
+                                    type="checkbox"
+                                    id="showInactiveToggle"
+                                    checked={showInactiveStaff}
+                                    onChange={(e) => setShowInactiveStaff(e.target.checked)}
+                                    className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500 cursor-pointer"
+                                />
+                                <label htmlFor="showInactiveToggle" className="cursor-pointer select-none">
+                                    Hiện nhân sự đã nghỉ
+                                </label>
+                            </div>
+                        )}
                     </div>
-                    <button onClick={() => setIsModalOpen(true)} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 font-bold active:scale-95 transition"><Plus size={20} /> TẠO BÁO CÁO</button>
+                    <button onClick={() => setIsModalOpen(true)} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 font-bold active:scale-95 transition"><Plus size={20} /> TẠO BÁO CÁO</button>
                 </div>
 
                 {/* TOOLBAR SORT MOBILE */}
@@ -437,7 +486,7 @@ const ReportList = () => {
                                     {/* INFO */}
                                     <div className="col-span-1 md:col-span-4 flex items-center gap-3 border-b md:border-b-0 md:border-r border-gray-100 pb-3 md:pb-0">
                                         <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shadow-sm shrink-0 relative ${iconStyle}`}>{idx === 0 && hasData ? <Crown size={22} className="text-white drop-shadow-md" /> : (idx < 3 && hasData ? <Trophy size={18} className="text-white" /> : idx + 1)}{isTop1 && <span className="absolute inset-0 rounded-full bg-yellow-400 opacity-20 animate-ping"></span>}</div>
-                                        <div className="min-w-0"><p className={`font-bold truncate text-base ${isTop1 ? 'text-yellow-800' : 'text-gray-800'}`}>{staff.name} {isTop1 && <span className="hidden md:inline-block text-[10px] bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded-full ml-1 font-bold">TOP 1</span>}</p><p className="text-xs text-gray-400 font-medium uppercase truncate">{staff.department || 'SKODA ĐỒNG NAI'}</p>{!hasData && <span className="md:hidden text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold mt-1 inline-block">CHƯA BÁO CÁO</span>}</div>
+                                        <div className="min-w-0"><p className={`font-bold truncate text-base ${isTop1 ? 'text-yellow-800' : 'text-gray-800'}`}>{staff.name} {isTop1 && <span className="hidden md:inline-block text-[10px] bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded-full ml-1 font-bold">TOP 1</span>}</p><p className="text-xs text-gray-400 font-medium uppercase truncate">{staff.department || 'MG BÌNH DƯƠNG'}</p>{!hasData && <span className="md:hidden text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold mt-1 inline-block">CHƯA BÁO CÁO</span>}</div>
                                     </div>
                                     {/* METRICS */}
                                     <div className="col-span-1 md:col-span-8 grid grid-cols-3 md:grid-cols-8 gap-y-2 gap-x-1">
@@ -477,8 +526,19 @@ const ReportList = () => {
                                                             </>
                                                         )}
                                                     </div>
-                                                    <div className="p-1 bg-gray-100 rounded hover:bg-blue-50 shrink-0">
-                                                        {rpt.type === 'Video' ? <Video size={16} className="text-purple-500" /> : (rpt.imageUrl ? <ImageIcon size={16} className="text-gray-400 hover:text-blue-500" /> : null)}
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <div className="p-1 bg-gray-100 rounded hover:bg-blue-50">
+                                                            {rpt.type === 'Video' ? <Video size={16} className="text-purple-500" /> : (rpt.imageUrl ? <ImageIcon size={16} className="text-gray-400 hover:text-blue-500" /> : null)}
+                                                        </div>
+                                                        {isAdmin && (
+                                                            <button
+                                                                onClick={(e) => handleDeleteReport(rpt.id, e)}
+                                                                className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition"
+                                                                title="Xóa báo cáo"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))
@@ -500,7 +560,7 @@ const ReportList = () => {
                             <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-red-100 hover:text-red-500 rounded-full transition"><X size={20} /></button>
                         </div>
                         <div className="flex border-b border-gray-200">
-                            <button onClick={() => setModalTab('scan')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 ${modalTab === 'scan' ? 'text-green-600 border-b-2 border-green-600 bg-green-50' : 'text-gray-500 hover:bg-gray-50'}`}><Sparkles size={16} /> Quét Ảnh AI</button>
+                            <button onClick={() => setModalTab('scan')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 ${modalTab === 'scan' ? 'text-red-600 border-b-2 border-red-600 bg-red-50' : 'text-gray-500 hover:bg-gray-50'}`}><Sparkles size={16} /> Quét Ảnh AI</button>
                             <button onClick={() => setModalTab('link')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 ${modalTab === 'link' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-50'}`}><LinkIcon size={16} /> Nhập Link Video</button>
                         </div>
                         <div className="p-5 space-y-4 overflow-y-auto">
@@ -509,7 +569,17 @@ const ReportList = () => {
                                 <>
                                     <div className="border-2 border-dashed border-gray-300 rounded-xl h-32 flex flex-col items-center justify-center bg-slate-50 relative overflow-hidden cursor-pointer hover:border-blue-400 transition" onClick={() => document.getElementById('fileInput').click()}>
                                         {previewUrl ? <img src={previewUrl} className="w-full h-full object-cover" /> : <div className="text-center p-2"><ImageIcon className="mx-auto text-gray-400 mb-1" /><span className="text-[10px] text-gray-500 font-bold">Chọn ảnh Live/Analytics</span></div>}
-                                        {analyzing && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>}
+                                        {analyzing && (
+                                            <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center p-3 text-center">
+                                                <Loader2 className="animate-spin text-blue-600 mb-2" size={24} />
+                                                <span className="text-xs font-bold text-gray-800">{scanProgress?.message || 'Đang quét ảnh...'}</span>
+                                                {scanProgress?.originalSize && (
+                                                    <span className="text-[10px] text-blue-600 font-semibold mt-1">
+                                                        Nén: {scanProgress.originalSize} ➔ {scanProgress.compressedSize}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                     <input id="fileInput" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                                     {!selectedGroup && scannedGroups.length > 0 && (
@@ -571,7 +641,7 @@ const ReportList = () => {
                                 {modalTab === 'scan' && selectedGroup && (
                                     <>
                                         <div className="flex-1 text-xs text-gray-500">* KPI: Min 30p & View 100</div>
-                                        <button onClick={handleSaveScan} disabled={uploading || selectedGroup.sessions.filter(s => s.selected).length === 0} className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg disabled:opacity-70">{uploading ? <Loader2 className="animate-spin" /> : <CheckCircle size={20} />} {uploading ? 'Đang lưu...' : `LƯU (${selectedGroup.sessions.filter(s => s.selected).length})`}</button>
+                                        <button onClick={handleSaveScan} disabled={uploading || selectedGroup.sessions.filter(s => s.selected).length === 0} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg disabled:opacity-70">{uploading ? <Loader2 className="animate-spin" /> : <CheckCircle size={20} />} {uploading ? 'Đang lưu...' : `LƯU (${selectedGroup.sessions.filter(s => s.selected).length})`}</button>
                                     </>
                                 )}
                                 {modalTab === 'link' && (

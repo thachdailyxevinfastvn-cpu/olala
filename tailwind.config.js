@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#4caf50', // Màu xanh chủ đạo (bạn có thể sửa sau)
+        primary: '#d11919', // MG Red
       }
     },
   },

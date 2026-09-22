@@ -127,7 +127,7 @@ const Mascot = () => {
       {/* Ảnh 1 */}
       <img 
         src={img1} 
-        alt="Skoda Mascot Pose 1" 
+        alt="MG Mascot Pose 1" 
         onDragStart={(e) => e.preventDefault()}
         className={`${imgCommonClasses} ${showSecond ? 'hidden' : 'block'}`}
       />
@@ -135,7 +135,7 @@ const Mascot = () => {
       {/* Ảnh 2 */}
       <img 
         src={img2} 
-        alt="Skoda Mascot Pose 2" 
+        alt="MG Mascot Pose 2" 
         onDragStart={(e) => e.preventDefault()}
         className={`${imgCommonClasses} ${!showSecond ? 'hidden' : 'block'}`}
       />

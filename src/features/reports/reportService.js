@@ -1,10 +1,64 @@
 // src/features/reports/reportService.js
-
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzk88b6oX8V5GH92tewnw_BpBDwI-p51oiNTaCpCy0E16OfdYKg6Mpx8BYmvU-yC2SW/exec';
+import { db } from '../../api/firebase';
+import { collection, getDocs, doc, setDoc, writeBatch, deleteDoc } from 'firebase/firestore';
+import { authService } from '../auth/authService';
+import { createGeminiOCRClient } from '../../lib/gemini-ocr-compressor';
 
 const CLOUD_NAME = 'dda8qq92p';
 const UPLOAD_PRESET = 'skoda_upload';
-const GEMINI_API_KEY = 'AIzaSyAX5OlW_yRdYDoFjj--YIUkOD18UBX1Wm8';
+
+// Danh sách Gemini API Keys xoay vòng (Được giải mã runtime)
+const ENCODED_KEYS = [
+  "QVEuQWI4Uk42SktMa3NiQzhUOGVUamsxVERkeGV0VklVd2ZWb2NMN1FTTDVPWjJoc1pBbEE=",
+  "QVEuQWI4Uk42STFkdlpBOUd6bUk0Q0lmNTFFOEhhOXNhU256N2NNSF8wSDd4aV9kVnNEM0E=",
+  "QVEuQWI4Uk42TEQyazYxdm1IZmpmYXNjVVgya0ZkOHdMdlh2cEZuQWJWSUFQb0oyTjZ4eHc=",
+  "QVEuQWI4Uk42TG40NGZQOUpNdFJNMTdELTRyT2tvSUlFOGRkR1VvUThXbFJQN1RUOTcwRWc=",
+  "QVEuQWI4Uk42S1hNck1XcXdaOE52Y0c4Q3RrU0YyUHZ3VGtHOW1kUERQNG9qNnU2azI4VEE=",
+  "QVEuQWI4Uk42S1NoU0xIU3lNQ3VzS1lmWlRmaHM0Vjh3MlJGV21ncFFXakNnWk1sNmhSOEE=",
+  "QVEuQWI4Uk42THZKVFJxR1R0OEN2bWRueFpTXzh0ajZUMlRHTDJqX3pDdzdaak45Z1ota1E=",
+  "QVEuQWI4Uk42SWIxTkxUUDBIOG9oMmhUT1dMM295cV9rZVBqNlVjckJneUNHREpad3Q2ZXc=",
+  "QVEuQWI4Uk42SXZNRkF2Xzh5cXNiNDdrUFlWR21WM0ptck1KWkI5Q3h1Y3ZVYUI4aGluOFE=",
+  "QVEuQWI4Uk42SVdDaXJJa0xGemNJNXJ3UFFUZk1hRFZXYTVTemlPWE02RUxISmIzYUJ6UHc="
+];
+const GEMINI_API_KEYS = ENCODED_KEYS.map(k => {
+  try { return atob(k); } catch (e) { return k; }
+});
+
+// Khởi tạo Gemini OCR Compressor Client
+const ocrClient = createGeminiOCRClient({
+  apiKeys: GEMINI_API_KEYS,
+  models: ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'],
+  timeoutMs: 8000,
+  compressOptions: {
+    targetWidth: 1080,
+    quality: 0.82,
+    enhanceContrast: true
+  }
+});
+
+// JSON Schema chuẩn cho báo cáo Livestream
+const liveReportSchema = {
+  type: 'array',
+  items: {
+    type: 'object',
+    properties: {
+      date: { type: 'string', description: 'Ngày phát sóng dạng YYYY-MM-DD' },
+      sessions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            minutes: { type: 'integer', description: 'Thời lượng phiên live tính bằng phút' },
+            views: { type: 'integer', description: 'Tổng số lượt xem phiên live' },
+            note: { type: 'string', description: 'Tên hoặc ghi chú phiên live' }
+          },
+          required: ['minutes', 'views']
+        }
+      }
+    },
+    required: ['date', 'sessions']
+  }
+};
 
 export const reportService = {
   uploadImage: async (file) => {
@@ -21,95 +75,91 @@ export const reportService = {
 
   addBatchReports: async (reportList, overwrite = false) => {
     try {
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'addBatchReports', reports: reportList, overwrite: overwrite })
+      const batch = writeBatch(db);
+      reportList.forEach(report => {
+        const docId = `${report.reportDate || 'nodate'}_${report.staffID || report.staffName || 'unknown'}_${report.type || 'unknown'}_${encodeURIComponent(report.note || 'session')}`;
+        const docRef = doc(db, 'reports', docId);
+        batch.set(docRef, {
+          ...report,
+          createdAt: new Date().toISOString()
+        }, { merge: !overwrite });
       });
-      return await response.json();
-    } catch (error) { return { status: 'error', message: 'Lỗi kết nối server' }; }
+      await batch.commit();
+      return { status: 'success' };
+    } catch (error) { 
+      console.error("Lỗi gửi báo cáo Firestore:", error);
+      return { status: 'error', message: 'Lỗi lưu dữ liệu: ' + error.message }; 
+    }
   },
 
   getReports: async () => {
     try {
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'getReports' })
+      const snap = await getDocs(collection(db, 'reports'));
+      const list = [];
+      snap.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
       });
-      return await response.json();
-    } catch (error) { return { status: 'error', data: [] }; }
+      return { status: 'success', data: list };
+    } catch (error) { 
+      console.error("Lỗi lấy báo cáo Firestore:", error);
+      return { status: 'error', data: [] }; 
+    }
+  },
+
+  deleteReport: async (reportId) => {
+    try {
+      await deleteDoc(doc(db, 'reports', reportId));
+      return { status: 'success' };
+    } catch (error) { 
+      console.error("Lỗi xóa báo cáo Firestore:", error);
+      return { status: 'error', message: 'Lỗi xóa dữ liệu: ' + error.message }; 
+    }
   },
 
   getStaffList: async () => {
     try {
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'getStaffList' })
+      const snap = await getDocs(collection(db, 'users'));
+      const list = [];
+      snap.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
       });
-      return await response.json();
-    } catch (error) { return { status: 'error', data: [] }; }
+      if (list.length > 0) return { status: 'success', data: list };
+    } catch (error) { 
+      // Firestore permission restricted for non-admin accounts
+    }
+    const curUser = authService.getCurrentUser();
+    const fallbackList = curUser ? [{ id: curUser.id || 'me', name: curUser.name || 'Bản thân', department: curUser.department || '' }] : [];
+    return { status: 'success', data: fallbackList };
   },
 
-  analyzeImageWithAI: async (imageFile) => {
-    console.log("🚀 START AI SCAN (Gemini 1.5 Flash)...");
+  analyzeImageWithAI: async (imageFile, onProgress) => {
+    console.log("🚀 START AI SCAN (Gemini Vision OCR Compressor)...");
     try {
-      const base64Data = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(imageFile);
-      });
+      const prompt = `Bạn là kiểm soát viên số liệu nhập liệu. Phân tích ảnh chụp màn hình báo cáo TikTok Live / Facebook Live / Reels / Shorts.
+Ảnh có thể chứa dữ liệu của một hoặc nhiều ngày.
+Nhiệm vụ:
+1. Tìm tất cả các ngày có trong ảnh (Format chuẩn: YYYY-MM-DD).
+2. Với mỗi ngày, liệt kê tất cả các phiên live kèm thời lượng (số phút nguyên) và số lượt xem (views).
+3. Đặt note tương ứng với phiên (ví dụ: "Phiên 12:30", "Phiên sáng").`;
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+      const result = await ocrClient.extractFromImage(
+        imageFile,
+        prompt,
+        liveReportSchema,
+        onProgress
+      );
 
-      const prompt = `
-        Bạn là kiểm soát viên nhập liệu. Xem ảnh báo cáo TikTok Live.
-        Ảnh có thể chứa dữ liệu của NHIỀU NGÀY. Hãy phân tích và gom nhóm.
-        Nhiệm vụ:
-        1. Tìm tất cả các ngày có trong ảnh (Format chuẩn: YYYY-MM-DD).
-        2. Với mỗi ngày, liệt kê tất cả các phiên live.
-        3. Với mỗi phiên, lấy: Thời lượng (số phút), Lượt xem (số).
-        QUAN TRỌNG: Chỉ trả về JSON thuần túy, KHÔNG markdown.
-        Mẫu JSON mong muốn (Luôn trả về Mảng):
-        [
-          { "date": "2024-03-20", "sessions": [{ "minutes": 41, "views": 105, "note": "Phiên 12:30" }] }
-        ]
-      `;
-
-      const payload = { contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: imageFile.type || 'image/jpeg', data: base64Data } }] }] };
-      const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      const data = await response.json();
-
-      if (data.candidates && data.candidates[0].content) {
-        let textResponse = data.candidates[0].content.parts[0].text;
-
-        textResponse = textResponse.replace(/```json|```/g, '').trim();
-
-        const firstBracket = textResponse.indexOf('[');
-        const firstCurly = textResponse.indexOf('{');
-        const lastBracket = textResponse.lastIndexOf(']');
-        const lastCurly = textResponse.lastIndexOf('}');
-
-        let cleanJson = textResponse;
-        if (firstBracket !== -1 && lastBracket !== -1) {
-          cleanJson = textResponse.substring(firstBracket, lastBracket + 1);
-        } else if (firstCurly !== -1 && lastCurly !== -1) {
-          cleanJson = textResponse.substring(firstCurly, lastCurly + 1);
+      if (Array.isArray(result)) return result;
+      if (result && typeof result === 'object') {
+        if (result.sessions && (result.date || result.reportDate)) {
+          return [{ date: result.date || result.reportDate, sessions: result.sessions }];
         }
-
-        try {
-          const result = JSON.parse(cleanJson);
-          if (Array.isArray(result)) return result;
-          else if (typeof result === 'object') {
-            if (!result.date && result.reportDate) result.date = result.reportDate;
-            return [result];
-          }
-          return null;
-        } catch (parseError) {
-          console.error("❌ JSON Parse Error:", parseError);
-          return null;
-        }
+        return [result];
       }
       return null;
-    } catch (error) { console.error("❌ System Error:", error); return null; }
+    } catch (error) {
+      console.error("❌ Gemini OCR System Error:", error);
+      throw error;
+    }
   }
 };

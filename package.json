@@ -1,5 +1,5 @@
 {
-  "name": "skoda-crm_new",
+  "name": "mg-crm-2026",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,6 +13,7 @@
     "axios": "^1.13.4",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "firebase": "^12.16.0",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

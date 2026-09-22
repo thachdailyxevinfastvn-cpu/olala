@@ -316,7 +316,7 @@ const AssignCustomerPage = () => {
                                         <td className="p-3 border-r font-mono text-blue-600">{c.phone}</td>
                                         <td className="p-3 border-r text-gray-700 flex items-center gap-1"><User size={12} className="text-gray-400" /> {c.creatorName || 'N/A'}</td>
                                         <td className="p-3 border-r font-bold text-blue-700">{c.saleName || 'N/A'}</td>
-                                        <td className="p-3 border-r text-gray-700 font-medium">{c.carModel} <span className="font-normal text-gray-400 text-[10px]">{c.version}</span></td>
+                                        <td className="p-3 border-r text-gray-700 font-medium">{c.carModel}</td>
                                         <td className="p-3 border-r text-center">
                                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${daysBadge.bg} ${daysBadge.text}`}>{daysBadge.label}</span>
                                         </td>
